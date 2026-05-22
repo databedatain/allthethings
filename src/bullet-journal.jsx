@@ -944,15 +944,15 @@ export default function BulletJournal() {
             {/* theme presets for the active palette */}
             <div>
               <div style={{ ...settingRow, marginBottom: "4px" }}>theme</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px" }}>
                 {PRESETS.filter((p) => p.palette === data.palette).map((p) => (
                   <button key={p.id} onClick={() => applyPreset(p)} title={p.name}
                     style={{
-                      width: "96px", display: "flex", alignItems: "center",
-                      justifyContent: "flex-start", gap: "6px",
+                      display: "flex", alignItems: "center",
+                      justifyContent: "flex-start", gap: "5px",
                       cursor: "pointer", borderRadius: "5px",
                       border: `1px solid ${t.border}`, background: t.surface,
-                      padding: "4px 8px", fontFamily: fonts.body,
+                      padding: "4px 6px", fontFamily: fonts.body,
                       fontSize: "12px", color: t.textMuted,
                     }}>
                     <span style={{ display: "flex", gap: "3px", flexShrink: 0 }}>
