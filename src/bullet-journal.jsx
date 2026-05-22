@@ -112,7 +112,7 @@ function TaskRow({ task, t, fonts, drag, isOver, spacing, onEdit, onSetColor, on
         onDrop={(e) => { if (drag.enabled) { e.preventDefault(); drag.onDrop(task.id); } }}
         onDragEnd={() => drag.onEnd()}
         style={{
-          display: "flex", alignItems: "center", gap: "7px",
+          display: "flex", alignItems: "center", gap: "4px",
           padding: `${spacing.padY}px ${spacing.padX}px`,
           borderRadius: isQExpanded ? "6px 6px 0 0" : "6px",
           background: tint, border,

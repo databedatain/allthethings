@@ -44,8 +44,8 @@ export function weekParts(key) {
 
 export const SPACING_DEFAULTS = {
   taskGap: 6,
-  padY: 7,
-  padX: 10,
+  padY: 4,
+  padX: 4,
   btnPad: 3,
   taskFont: 18,
 };
