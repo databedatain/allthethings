@@ -95,7 +95,7 @@ function TaskRow({ task, t, fonts, drag, isOver, onStatusChange, onDelete, onTog
         onDrop={(e) => { if (drag.enabled) { e.preventDefault(); drag.onDrop(task.id); } }}
         onDragEnd={() => drag.onEnd()}
         style={{
-          display: "flex", alignItems: "center", gap: "7px",
+          display: "flex", alignItems: "center", gap: "4px",
           padding: "7px 10px", borderRadius: isQExpanded ? "6px 6px 0 0" : "6px",
           background: bg, border, borderBottom: isQExpanded ? "none" : undefined,
           borderTop: isOver ? `2px solid ${t.accent}` : border.startsWith("1px dashed") ? border : undefined,
