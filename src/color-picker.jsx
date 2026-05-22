@@ -4,7 +4,7 @@ import { NEUTRALS, shades, bgShades } from "./theme.js";
 /* Inline swatch trigger that opens a palette popover. `value` is a hex string
  * or null ("none"). `colors` is the active palette's base colours. variant="bg"
  * offers mode-appropriate background shades. */
-export default function ColorPicker({ value, onChange, allowNone, variant, colors, t }) {
+export default function ColorPicker({ value, onChange, allowNone, variant, colors, size = 20, t }) {
   const [open, setOpen] = useState(false);
   const none = `linear-gradient(45deg, transparent 47%, ${t.textFaint} 47%, ${t.textFaint} 53%, transparent 53%)`;
   const columnShades = (c) => (variant === "bg" ? bgShades(c, t.dark) : shades(c));
@@ -31,7 +31,7 @@ export default function ColorPicker({ value, onChange, allowNone, variant, color
         onClick={() => setOpen((o) => !o)}
         title="Pick colour"
         style={{
-          width: 20, height: 20, borderRadius: 4, padding: 0, cursor: "pointer",
+          width: size, height: size, borderRadius: 4, padding: 0, cursor: "pointer",
           border: `1px solid ${t.border}`,
           background: value || (t.dark ? "#3a3a3f" : "#fff"),
           backgroundImage: value ? "none" : none,
