@@ -52,8 +52,9 @@ export const SPACING_DEFAULTS = {
 
 export function defaultData() {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     tasks: [],
+    trash: [],
     weekNotes: {},
     sortMode: "custom",
     sortOrder: "oldest",
@@ -118,6 +119,15 @@ export function migrate(data) {
     delete d.weekNoteColors;
   }
 
+  if (d.schemaVersion < 5) {
+    d = {
+      ...d,
+      schemaVersion: 5,
+      trash: [],
+      theme: { ...THEME_DEFAULTS, ...d.theme },
+    };
+  }
+
   return d;
 }
 
@@ -136,15 +146,16 @@ export function rollIncompletes(data) {
   return changed ? { ...data, tasks } : data;
 }
 
-// Test fixture: 4 prior weeks of tasks + notes. Done tasks stay put so each
-// week shows up in the sidebar; incompletes roll forward on the next load.
+// Test fixture: 4 prior weeks of tasks + notes. Idempotent per week — a
+// sample week is only (re)added when it currently holds no tasks, so the
+// button can restore a week the user emptied without duplicating others.
 export function withSampleWeeks(data) {
-  if (data.sampleLoaded) return data;
   const base = mondayOf(new Date());
   let id = data.nextId;
   let order = data.tasks.reduce((m, t) => Math.max(m, t.order ?? 0), 0) + 1;
   const tasks = [...data.tasks];
   const weekNotes = { ...data.weekNotes };
+  const existingWeeks = new Set(data.tasks.map((tk) => tk.week));
   const weeks = [
     {
       back: 4,
@@ -186,6 +197,7 @@ export function withSampleWeeks(data) {
     const m = new Date(base);
     m.setDate(m.getDate() - w.back * 7);
     const key = weekKey(m);
+    if (existingWeeks.has(key)) continue;
     weekNotes[key] = w.note;
     w.items.forEach(([text, status, starred], i) => {
       const created = new Date(m);

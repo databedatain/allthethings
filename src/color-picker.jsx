@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { PALETTE, NEUTRALS, shades } from "./theme.js";
+import { PALETTE, NEUTRALS, shades, bgShades } from "./theme.js";
 
 /* Inline swatch trigger that opens a palette popover. `value` is a hex string
- * or null ("none"). Pass allowNone for the per-note override pickers. */
-export default function ColorPicker({ value, onChange, allowNone, t }) {
+ * or null ("none"). variant="bg" offers mode-appropriate background shades. */
+export default function ColorPicker({ value, onChange, allowNone, variant, t }) {
   const [open, setOpen] = useState(false);
   const none = `linear-gradient(45deg, transparent 47%, ${t.textFaint} 47%, ${t.textFaint} 53%, transparent 53%)`;
+  const columnShades = (c) => (variant === "bg" ? bgShades(c, t.dark) : shades(c));
 
   const Cell = ({ color }) => {
     const selected = (value || null) === (color || null);
@@ -42,7 +43,7 @@ export default function ColorPicker({ value, onChange, allowNone, t }) {
             style={{ position: "fixed", inset: 0, zIndex: 40 }}
           />
           <div style={{
-            position: "absolute", top: 26, left: 0, zIndex: 41,
+            position: "absolute", top: 26, right: 0, zIndex: 41,
             background: t.popover, border: `1px solid ${t.border}`,
             borderRadius: 6, padding: 8,
             boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
@@ -54,7 +55,7 @@ export default function ColorPicker({ value, onChange, allowNone, t }) {
             <div style={{ display: "flex", gap: 4 }}>
               {PALETTE.map((c) => (
                 <div key={c} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {shades(c).map((s) => <Cell key={s} color={s} />)}
+                  {columnShades(c).map((s) => <Cell key={s} color={s} />)}
                 </div>
               ))}
             </div>

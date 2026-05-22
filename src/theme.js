@@ -13,7 +13,17 @@ export const THEME_DEFAULTS = {
   highlight: "#5fba77",
   star: "#EFB900",
   hold: "#a6afbb",
+  bg: null,
 };
+
+// Named presets — applied to the three base colours only.
+export const THEME_PRESETS = [
+  { name: "Meadow", highlight: "#5fba77", star: "#EFB900", hold: "#a6afbb" },
+  { name: "Harbor", highlight: "#5C8BC3", star: "#6CC6CB", hold: "#a6afbb" },
+  { name: "Sunset", highlight: "#E89D56", star: "#EFB900", hold: "#bb5f6f" },
+  { name: "Orchid", highlight: "#8883BA", star: "#bb5f6f", hold: "#a6afbb" },
+  { name: "Ink",    highlight: "#1e4a71", star: "#EFB900", hold: "#465058" },
+];
 
 function hexToRgb(hex) {
   const n = parseInt(hex.replace("#", ""), 16);
@@ -45,15 +55,23 @@ export function shades(hex) {
   return [hex, lighten(hex, 0.2), lighten(hex, 0.4)];
 }
 
+// background-suitable shades: very pale in light mode, very dark in dark mode
+export function bgShades(hex, dark) {
+  return dark
+    ? [darken(hex, 0.72), darken(hex, 0.82), darken(hex, 0.9)]
+    : [lighten(hex, 0.86), lighten(hex, 0.92), lighten(hex, 0.97)];
+}
+
 export function buildTheme(cfg) {
-  const { mode, highlight, star, hold } = { ...THEME_DEFAULTS, ...cfg };
+  const { mode, highlight, star, hold, bg } = { ...THEME_DEFAULTS, ...cfg };
   const dark = mode === "dark";
+  const defaultBg = dark
+    ? "linear-gradient(180deg, #24262b 0%, #1b1c20 100%)"
+    : "linear-gradient(180deg, #faf8f4 0%, #f4f1eb 100%)";
   return {
     mode,
     dark,
-    bg: dark
-      ? "linear-gradient(180deg, #24262b 0%, #1b1c20 100%)"
-      : "linear-gradient(180deg, #faf8f4 0%, #f4f1eb 100%)",
+    bg: bg || defaultBg,
     surface: dark ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.55)",
     surfaceAlt: dark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.4)",
     panel: dark ? "rgba(255,255,255,0.045)" : "rgba(255,255,255,0.6)",
