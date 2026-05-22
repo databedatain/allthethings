@@ -5,7 +5,7 @@ import { PALETTE, NEUTRALS, shades } from "./theme.js";
  * or null ("none"). Pass allowNone for the per-note override pickers. */
 export default function ColorPicker({ value, onChange, allowNone, t }) {
   const [open, setOpen] = useState(false);
-  const none = "linear-gradient(45deg, transparent 44%, #d46a6a 44%, #d46a6a 56%, transparent 56%)";
+  const none = `linear-gradient(45deg, transparent 47%, ${t.textFaint} 47%, ${t.textFaint} 53%, transparent 53%)`;
 
   const Cell = ({ color }) => {
     const selected = (value || null) === (color || null);
