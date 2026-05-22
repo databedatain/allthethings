@@ -15,7 +15,7 @@ import {
   applyFont,
   removeFontStyle,
 } from "./font.js";
-import { buildTheme, rgba, THEME_PRESETS } from "./theme.js";
+import { buildTheme, rgba, PRESETS, PALETTES, getPalette } from "./theme.js";
 import ColorPicker from "./color-picker.jsx";
 
 const STORAGE_KEY = "bullet-journal-data";
@@ -75,7 +75,7 @@ const IconGrip = () => (
 );
 
 /* ─── task row ─── */
-function TaskRow({ task, t, fonts, drag, isOver, spacing, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onUpdateQuestion, isQExpanded, onToggleQ }) {
+function TaskRow({ task, t, fonts, colors, drag, isOver, spacing, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onUpdateQuestion, isQExpanded, onToggleQ }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.text);
   const isHold = task.status === "hold";
@@ -176,7 +176,7 @@ function TaskRow({ task, t, fonts, drag, isOver, spacing, onEdit, onSetColor, on
         }}>{formatDate(task.created)}</span>
 
         {/* per-task colour */}
-        <ColorPicker value={task.color || null} t={t} allowNone
+        <ColorPicker value={task.color || null} t={t} colors={colors} allowNone
           onChange={(c) => onSetColor(task.id, c)} />
 
         {/* star toggle */}
@@ -286,6 +286,56 @@ function DoneRow({ task, t, fonts, onRestore, onDelete }) {
           padding: "3px", color: t.textFaint, display: "flex", alignItems: "center",
         }}><IconTrash /></button>
     </div>
+  );
+}
+
+/* ─── palette dropdown ─── */
+function PaletteSelect({ t, fonts, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const current = getPalette(value);
+  const dots = (cols) => (
+    <span style={{ display: "flex", gap: "2px" }}>
+      {cols.map((c, i) => (
+        <span key={i} style={{
+          width: "10px", height: "10px", borderRadius: "2px", background: c,
+        }} />
+      ))}
+    </span>
+  );
+  const rowStyle = (active) => ({
+    width: "100%", display: "flex", alignItems: "center",
+    justifyContent: "space-between", gap: "8px", cursor: "pointer",
+    borderRadius: "5px", padding: "5px 8px",
+    fontFamily: fonts.body, fontSize: "13px", color: t.textMuted,
+    border: "none", background: active ? t.accentSoft : "transparent",
+  });
+  return (
+    <span style={{ position: "relative", display: "block" }}>
+      <button onClick={() => setOpen((o) => !o)}
+        style={{ ...rowStyle(false), border: `1px solid ${t.border}`, background: t.surface }}>
+        <span>{current.name}</span>
+        {dots(current.colors)}
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+          <div style={{
+            position: "absolute", top: "34px", left: 0, right: 0, zIndex: 41,
+            background: t.popover, border: `1px solid ${t.border}`,
+            borderRadius: 6, padding: 4, boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
+          }}>
+            {PALETTES.map((p) => (
+              <button key={p.id} onClick={() => { onChange(p.id); setOpen(false); }}
+                style={rowStyle(p.id === value)}>
+                <span>{p.name}</span>
+                {dots(p.colors)}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </span>
   );
 }
 
@@ -506,6 +556,18 @@ export default function BulletJournal() {
       theme: { ...d.theme, highlight: p.highlight, star: p.star, hold: p.hold },
     }));
 
+  const selectPalette = (id) =>
+    update((d) => {
+      const first = PRESETS.find((p) => p.palette === id);
+      return {
+        ...d,
+        palette: id,
+        theme: first
+          ? { ...d.theme, highlight: first.highlight, star: first.star, hold: first.hold }
+          : d.theme,
+      };
+    });
+
   const setSpacing = (key, value) =>
     update((d) => ({ ...d, spacing: { ...d.spacing, [key]: value } }));
 
@@ -553,6 +615,7 @@ export default function BulletJournal() {
 
   const t = theme;
   const spacing = data.spacing;
+  const paletteColors = getPalette(data.palette).colors;
   const fonts = {
     heading: fontName ? "'BJCustom', cursive" : "'Caveat', cursive",
     body: fontName ? "'BJCustom', sans-serif" : "'Karla', sans-serif",
@@ -767,25 +830,34 @@ export default function BulletJournal() {
                   onClick={() => setThemeKey("mode", "dark")}>dark</button>
               </div>
             </div>
-            {/* theme presets */}
+            {/* palette */}
+            <div>
+              <div style={{ ...settingRow, marginBottom: "4px" }}>palette</div>
+              <PaletteSelect t={t} fonts={fonts} value={data.palette}
+                onChange={selectPalette} />
+            </div>
+            {/* theme presets for the active palette */}
             <div>
               <div style={{ ...settingRow, marginBottom: "4px" }}>theme</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
-                {THEME_PRESETS.map((p) => (
-                  <button key={p.name} onClick={() => applyPreset(p)} title={p.name}
+                {PRESETS.filter((p) => p.palette === data.palette).map((p) => (
+                  <button key={p.id} onClick={() => applyPreset(p)} title={p.name}
                     style={{
-                      display: "flex", alignItems: "center", gap: "4px",
+                      width: "96px", display: "flex", alignItems: "center",
+                      justifyContent: "center", gap: "5px",
                       cursor: "pointer", borderRadius: "5px",
                       border: `1px solid ${t.border}`, background: t.surface,
-                      padding: "3px 6px", fontFamily: fonts.body,
+                      padding: "4px 0", fontFamily: fonts.body,
                       fontSize: "12px", color: t.textMuted,
                     }}>
-                    {[p.highlight, p.star, p.hold].map((c, i) => (
-                      <span key={i} style={{
-                        width: "9px", height: "9px", borderRadius: "50%",
-                        background: c, display: "inline-block",
-                      }} />
-                    ))}
+                    <span style={{ display: "flex", gap: "3px" }}>
+                      {[p.highlight, p.star, p.hold].map((c, i) => (
+                        <span key={i} style={{
+                          width: "9px", height: "9px", borderRadius: "50%",
+                          background: c, display: "inline-block",
+                        }} />
+                      ))}
+                    </span>
                     {p.name}
                   </button>
                 ))}
@@ -794,22 +866,23 @@ export default function BulletJournal() {
             {/* colour pickers */}
             <div style={settingRow}>
               <span>UI Highlight</span>
-              <ColorPicker value={data.theme.highlight} t={t}
+              <ColorPicker value={data.theme.highlight} t={t} colors={paletteColors}
                 onChange={(c) => c && setThemeKey("highlight", c)} />
             </div>
             <div style={settingRow}>
               <span>Star Color</span>
-              <ColorPicker value={data.theme.star} t={t}
+              <ColorPicker value={data.theme.star} t={t} colors={paletteColors}
                 onChange={(c) => c && setThemeKey("star", c)} />
             </div>
             <div style={settingRow}>
               <span>Hold Color</span>
-              <ColorPicker value={data.theme.hold} t={t}
+              <ColorPicker value={data.theme.hold} t={t} colors={paletteColors}
                 onChange={(c) => c && setThemeKey("hold", c)} />
             </div>
             <div style={settingRow}>
               <span>Background</span>
-              <ColorPicker value={data.theme.bg || null} t={t} allowNone variant="bg"
+              <ColorPicker value={data.theme.bg || null} t={t} colors={paletteColors}
+                allowNone variant="bg"
                 onChange={(c) => setThemeKey("bg", c)} />
             </div>
             {/* spacing sliders */}
@@ -1030,7 +1103,7 @@ export default function BulletJournal() {
                 </div>
               )}
               {activeTasks.map((x) => (
-                <TaskRow key={x.id} task={x} t={t} fonts={fonts} drag={drag}
+                <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} drag={drag}
                   spacing={spacing}
                   isOver={dragEnabled && overId === x.id && dragId !== x.id}
                   onEdit={editTask} onSetColor={setTaskColor}
@@ -1050,7 +1123,7 @@ export default function BulletJournal() {
                   <div style={{ display: "flex", flexDirection: "column",
                     gap: `${spacing.taskGap}px` }}>
                     {holdTasks.map((x) => (
-                      <TaskRow key={x.id} task={x} t={t} fonts={fonts} drag={drag}
+                      <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} drag={drag}
                         spacing={spacing}
                         isOver={dragEnabled && overId === x.id && dragId !== x.id}
                         onEdit={editTask} onSetColor={setTaskColor}

@@ -1,12 +1,61 @@
-/* Theme tokens + colour utilities. Three user-set base colours (highlight,
- * star, hold) feed a light/dark token map; lighter/darker shades are derived. */
-
-export const PALETTE = [
-  "#1e4a71", "#EFB900", "#E89D56", "#5C8BC3", "#bb5f6f",
-  "#5fba77", "#8883BA", "#6CC6CB", "#a6afbb",
-];
+/* Theme tokens + colour utilities.
+ *
+ * - PALETTES: named sets of base ("100%") colours. The active palette feeds
+ *   every colour-picker popover.
+ * - PRESETS: highlight/star/hold combos, each belonging to a palette.
+ * Three user-set base colours (highlight, star, hold) feed a light/dark
+ * token map; lighter/darker shades are derived. */
 
 export const NEUTRALS = ["#000000", "#465058", "#ffffff"];
+
+export const PALETTES = [
+  {
+    id: "default",
+    name: "Default",
+    colors: [
+      "#1e4a71", "#EFB900", "#E89D56", "#5C8BC3", "#bb5f6f",
+      "#5fba77", "#8883BA", "#6CC6CB", "#a6afbb",
+    ],
+  },
+  {
+    id: "dusk",
+    name: "Dusk",
+    colors: [
+      "#2e3a59", "#6b5b95", "#88649e", "#b5838d", "#4a7c8c",
+      "#9d8aa8", "#5d7b8a", "#c08497", "#8d99ae",
+    ],
+  },
+  {
+    id: "ember",
+    name: "Ember",
+    colors: [
+      "#9c4a2f", "#d98e04", "#c96e3f", "#e3b23c", "#a13d2d",
+      "#7d7c3a", "#d2a679", "#b5654a", "#a89b8c",
+    ],
+  },
+  {
+    id: "bloom",
+    name: "Bloom",
+    colors: [
+      "#ef6f6c", "#f4c145", "#56a3d9", "#5fbf9f", "#9d8ec9",
+      "#e08aa6", "#9cc457", "#5fc7c7", "#8896d8",
+    ],
+  },
+];
+
+export function getPalette(id) {
+  return PALETTES.find((p) => p.id === id) || PALETTES[0];
+}
+
+// theme presets — each belongs to a palette; sets the three base colours
+export const PRESETS = [
+  { id: "harbor", name: "Harbor", palette: "default", highlight: "#5C8BC3", star: "#6CC6CB", hold: "#a6afbb" },
+  { id: "anchor", name: "Anchor", palette: "default", highlight: "#5fba77", star: "#EFB900", hold: "#a6afbb" },
+  { id: "ink",    name: "Ink",    palette: "default", highlight: "#1e4a71", star: "#EFB900", hold: "#465058" },
+  { id: "twilight", name: "Twilight", palette: "dusk",  highlight: "#6b5b95", star: "#c08497", hold: "#8d99ae" },
+  { id: "hearth",   name: "Hearth",   palette: "ember", highlight: "#9c4a2f", star: "#d98e04", hold: "#a89b8c" },
+  { id: "posy",     name: "Posy",     palette: "bloom", highlight: "#ef6f6c", star: "#f4c145", hold: "#8896d8" },
+];
 
 export const THEME_DEFAULTS = {
   mode: "light",
@@ -15,15 +64,6 @@ export const THEME_DEFAULTS = {
   hold: "#a6afbb",
   bg: null,
 };
-
-// Named presets — applied to the three base colours only.
-export const THEME_PRESETS = [
-  { name: "Meadow", highlight: "#5fba77", star: "#EFB900", hold: "#a6afbb" },
-  { name: "Harbor", highlight: "#5C8BC3", star: "#6CC6CB", hold: "#a6afbb" },
-  { name: "Sunset", highlight: "#E89D56", star: "#EFB900", hold: "#bb5f6f" },
-  { name: "Orchid", highlight: "#8883BA", star: "#bb5f6f", hold: "#a6afbb" },
-  { name: "Ink",    highlight: "#1e4a71", star: "#EFB900", hold: "#465058" },
-];
 
 function hexToRgb(hex) {
   const n = parseInt(hex.replace("#", ""), 16);

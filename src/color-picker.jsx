@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { PALETTE, NEUTRALS, shades, bgShades } from "./theme.js";
+import { NEUTRALS, shades, bgShades } from "./theme.js";
 
 /* Inline swatch trigger that opens a palette popover. `value` is a hex string
- * or null ("none"). variant="bg" offers mode-appropriate background shades. */
-export default function ColorPicker({ value, onChange, allowNone, variant, t }) {
+ * or null ("none"). `colors` is the active palette's base colours. variant="bg"
+ * offers mode-appropriate background shades. */
+export default function ColorPicker({ value, onChange, allowNone, variant, colors, t }) {
   const [open, setOpen] = useState(false);
   const none = `linear-gradient(45deg, transparent 47%, ${t.textFaint} 47%, ${t.textFaint} 53%, transparent 53%)`;
   const columnShades = (c) => (variant === "bg" ? bgShades(c, t.dark) : shades(c));
@@ -53,7 +54,7 @@ export default function ColorPicker({ value, onChange, allowNone, variant, t }) 
               {NEUTRALS.map((c) => <Cell key={c} color={c} />)}
             </div>
             <div style={{ display: "flex", gap: 4 }}>
-              {PALETTE.map((c) => (
+              {(colors || []).map((c) => (
                 <div key={c} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {columnShades(c).map((s) => <Cell key={s} color={s} />)}
                 </div>

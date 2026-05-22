@@ -52,7 +52,7 @@ export const SPACING_DEFAULTS = {
 
 export function defaultData() {
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     tasks: [],
     trash: [],
     weekNotes: {},
@@ -60,6 +60,7 @@ export function defaultData() {
     sortOrder: "oldest",
     nextId: 1,
     theme: { ...THEME_DEFAULTS },
+    palette: "default",
     spacing: { ...SPACING_DEFAULTS },
     sampleLoaded: false,
   };
@@ -126,6 +127,10 @@ export function migrate(data) {
       trash: [],
       theme: { ...THEME_DEFAULTS, ...d.theme },
     };
+  }
+
+  if (d.schemaVersion < 6) {
+    d = { ...d, schemaVersion: 6, palette: d.palette || "default" };
   }
 
   return d;
