@@ -77,7 +77,7 @@ const IconGrip = ({ size = 17 }) => (
 );
 
 /* ─── task row ─── */
-function TaskRow({ task, t, fonts, colors, drag, isOver, ui, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onUpdateQuestion, isQExpanded, onToggleQ }) {
+function TaskRow({ task, t, fonts, colors, drag, isOver, ui, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onUpdateQuestion, isQExpanded, onToggleQ }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.text);
   const isHold = task.status === "hold";
@@ -203,8 +203,9 @@ function TaskRow({ task, t, fonts, colors, drag, isOver, ui, onEdit, onSetColor,
         </button>
 
         {/* delete */}
-        <button onClick={() => onDelete(task.id)} title="Move to trash"
-          style={{ ...iconBtn, color: t.textFaint }}>
+        <button onClick={() => onDelete(task.id)}
+          title={confirmKey === `del:${task.id}` ? "Click again to remove" : "Move to trash"}
+          style={{ ...iconBtn, color: confirmKey === `del:${task.id}` ? t.danger : t.textFaint }}>
           <IconTrash size={ui.icon} />
         </button>
       </div>
@@ -260,7 +261,7 @@ function TaskRow({ task, t, fonts, colors, drag, isOver, ui, onEdit, onSetColor,
 }
 
 /* ─── done row ─── */
-function DoneRow({ task, t, fonts, ui, onRestore, onDelete }) {
+function DoneRow({ task, t, fonts, ui, confirmKey, onRestore, onDelete }) {
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: "9px",
@@ -283,10 +284,12 @@ function DoneRow({ task, t, fonts, ui, onRestore, onDelete }) {
       <span style={{
         fontFamily: fonts.heading, fontSize: `${Math.round(ui.date * 0.94)}px`, color: t.textFaint,
       }}>{formatDate(task.created)}</span>
-      <button onClick={() => onDelete(task.id)} title="Move to trash"
+      <button onClick={() => onDelete(task.id)}
+        title={confirmKey === `del:${task.id}` ? "Click again to remove" : "Move to trash"}
         style={{
-          background: "none", border: "none", cursor: "pointer",
-          padding: "3px", color: t.textFaint, display: "flex", alignItems: "center",
+          background: "none", border: "none", cursor: "pointer", padding: "3px",
+          color: confirmKey === `del:${task.id}` ? t.danger : t.textFaint,
+          display: "flex", alignItems: "center",
         }}><IconTrash size={ui.icon} /></button>
     </div>
   );
@@ -377,8 +380,10 @@ export default function BulletJournal() {
   const [trashOpen, setTrashOpen] = useState(false);
   const [dragId, setDragId] = useState(null);
   const [overId, setOverId] = useState(null);
+  const [confirmKey, setConfirmKey] = useState(null);
   const saveTimer = useRef(null);
   const inputRef = useRef(null);
+  const confirmTimer = useRef(null);
   const history = useRef({ past: [], future: [] });
 
   // load
@@ -536,6 +541,19 @@ export default function BulletJournal() {
     update((d) => ({ ...d, trash: d.trash.filter((x) => x.id !== id) }));
 
   const emptyTrash = () => update((d) => ({ ...d, trash: [] }));
+
+  // two-step confirm: first click arms `key`, second click within 3s runs it
+  const armOrRun = (key, action) => {
+    clearTimeout(confirmTimer.current);
+    if (confirmKey === key) {
+      setConfirmKey(null);
+      action();
+    } else {
+      setConfirmKey(key);
+      confirmTimer.current = setTimeout(() => setConfirmKey(null), 3000);
+    }
+  };
+  const armedDelete = (id) => armOrRun(`del:${id}`, () => deleteTask(id));
 
   const toggleStar = (id) =>
     update((d) => ({
@@ -899,7 +917,7 @@ export default function BulletJournal() {
                         <span title="light / dark background" style={{
                           width: "9px", height: "9px", borderRadius: "50%",
                           display: "inline-block", border: `1px solid ${t.border}`,
-                          background: `linear-gradient(135deg, ${pb.light} 0 50%, ${pb.dark} 50% 100%)`,
+                          background: `linear-gradient(90deg, ${pb.light} 0 50%, ${pb.dark} 50% 100%)`,
                         }} />
                       </span>
                       {p.name}
@@ -1008,15 +1026,21 @@ export default function BulletJournal() {
                     padding: "2px", color: t.question, display: "flex" }}>
                   <IconUndo />
                 </button>
-                <button onClick={() => deleteForever(x.id)} title="Delete forever"
+                <button onClick={() => armOrRun(`forever:${x.id}`, () => deleteForever(x.id))}
+                  title={confirmKey === `forever:${x.id}` ? "Click again to delete forever" : "Delete forever"}
                   style={{ background: "none", border: "none", cursor: "pointer",
-                    padding: 0, color: t.danger, fontSize: "14px" }}>✕</button>
+                    padding: 0, color: t.danger, fontFamily: fonts.body,
+                    fontSize: confirmKey === `forever:${x.id}` ? "12px" : "14px",
+                    fontWeight: confirmKey === `forever:${x.id}` ? 700 : 400 }}>
+                  {confirmKey === `forever:${x.id}` ? "sure?" : "✕"}
+                </button>
               </div>
             ))}
             {data.trash.length > 0 && (
-              <button onClick={emptyTrash} style={{ ...linkBtn, color: t.danger,
-                textAlign: "center", marginTop: "2px" }}>
-                empty trash
+              <button onClick={() => armOrRun("empty", emptyTrash)}
+                style={{ ...linkBtn, color: t.danger, textAlign: "center",
+                  marginTop: "2px", fontWeight: confirmKey === "empty" ? 700 : 400 }}>
+                {confirmKey === "empty" ? "click again to empty" : "empty trash"}
               </button>
             )}
           </div>
@@ -1151,8 +1175,9 @@ export default function BulletJournal() {
                   ui={ui}
                   isOver={dragEnabled && overId === x.id && dragId !== x.id}
                   onEdit={editTask} onSetColor={setTaskColor}
-                  onStatusChange={changeStatus} onDelete={deleteTask}
+                  onStatusChange={changeStatus} onDelete={armedDelete}
                   onToggleStar={toggleStar} onUpdateQuestion={updateQuestion}
+                  confirmKey={confirmKey}
                   isQExpanded={expandedQ.has(x.id)} onToggleQ={toggleQ}/>
               ))}
             </div>
@@ -1171,8 +1196,9 @@ export default function BulletJournal() {
                         ui={ui}
                         isOver={dragEnabled && overId === x.id && dragId !== x.id}
                         onEdit={editTask} onSetColor={setTaskColor}
-                        onStatusChange={changeStatus} onDelete={deleteTask}
+                        onStatusChange={changeStatus} onDelete={armedDelete}
                         onToggleStar={toggleStar} onUpdateQuestion={updateQuestion}
+                        confirmKey={confirmKey}
                         isQExpanded={expandedQ.has(x.id)} onToggleQ={toggleQ}/>
                     ))}
                   </div>
@@ -1197,8 +1223,9 @@ export default function BulletJournal() {
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                     {doneTasks.map((x) => (
                       <DoneRow key={x.id} task={x} t={t} fonts={fonts} ui={ui}
+                        confirmKey={confirmKey}
                         onRestore={(id) => changeStatus(id, "active")}
-                        onDelete={deleteTask}/>
+                        onDelete={armedDelete}/>
                     ))}
                     {!isEverything && (
                       <button onClick={clearDone} style={{
