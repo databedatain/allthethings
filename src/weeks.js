@@ -42,17 +42,21 @@ export function weekParts(key) {
   };
 }
 
-export const SPACING_DEFAULTS = {
-  taskGap: 6,
-  padY: 4,
-  padX: 4,
-  btnPad: 3,
-  taskFont: 18,
-};
+// Named density presets. taskFont is a starting point — it stays mutable via
+// the text-size slider after a preset is chosen.
+export const DENSITIES = [
+  { id: "cozy",    taskGap: 4,  padY: 4,  padX: 4,  btnPad: 2, taskFont: 16 },
+  { id: "comfy",   taskGap: 7,  padY: 8,  padX: 11, btnPad: 4, taskFont: 19 },
+  { id: "compact", taskGap: 11, padY: 13, padX: 17, btnPad: 6, taskFont: 22 },
+];
+
+export function getDensity(id) {
+  return DENSITIES.find((x) => x.id === id) || DENSITIES[0];
+}
 
 export function defaultData() {
   return {
-    schemaVersion: 6,
+    schemaVersion: 7,
     tasks: [],
     trash: [],
     weekNotes: {},
@@ -61,7 +65,8 @@ export function defaultData() {
     nextId: 1,
     theme: { ...THEME_DEFAULTS },
     palette: "default",
-    spacing: { ...SPACING_DEFAULTS },
+    density: "cozy",
+    taskFont: 16,
     sampleLoaded: false,
   };
 }
@@ -115,7 +120,7 @@ export function migrate(data) {
       ...d,
       schemaVersion: 4,
       tasks: d.tasks.map((x) => ({ ...x, color: x.color ?? null })),
-      spacing: { ...SPACING_DEFAULTS },
+      spacing: { taskGap: 6, padY: 4, padX: 4, btnPad: 3, taskFont: 18 },
     };
     delete d.weekNoteColors;
   }
@@ -131,6 +136,16 @@ export function migrate(data) {
 
   if (d.schemaVersion < 6) {
     d = { ...d, schemaVersion: 6, palette: d.palette || "default" };
+  }
+
+  if (d.schemaVersion < 7) {
+    d = {
+      ...d,
+      schemaVersion: 7,
+      density: "cozy",
+      taskFont: d.spacing?.taskFont ?? 16,
+    };
+    delete d.spacing;
   }
 
   return d;

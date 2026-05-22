@@ -7,6 +7,8 @@ import {
   currentWeekKey,
   weekLabel,
   weekParts,
+  DENSITIES,
+  getDensity,
 } from "./weeks.js";
 import {
   loadFont,
@@ -32,42 +34,42 @@ const IconCheck = ({ size = 18 }) => (
     <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
-const IconPause = () => (
-  <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
+const IconPause = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
     <rect x="3" y="2" width="2.5" height="10" rx="1" fill="currentColor"/>
     <rect x="8.5" y="2" width="2.5" height="10" rx="1" fill="currentColor"/>
   </svg>
 );
-const IconPlus = () => (
-  <svg width="19" height="19" viewBox="0 0 16 16" fill="none">
+const IconPlus = ({ size = 19 }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
     <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
   </svg>
 );
-const IconTrash = () => (
-  <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
+const IconTrash = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
     <path d="M2.5 4h9M5 4V3a1 1 0 011-1h2a1 1 0 011 1v1M6 6.5v3M8 6.5v3M3.5 4l.5 7.5a1 1 0 001 1h4a1 1 0 001-1L10.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
-const IconUndo = () => (
-  <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
+const IconUndo = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
     <path d="M3 5.5h5a3 3 0 010 6H6M3 5.5L5.5 3M3 5.5L5.5 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
-const IconQuestion = () => (
-  <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
+const IconQuestion = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
     <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3"/>
     <path d="M5.5 5.5a1.5 1.5 0 012.9.5c0 1-1.4 1-1.4 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
     <circle cx="7" cy="10" r="0.6" fill="currentColor"/>
   </svg>
 );
-const IconStar = ({ filled }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"}>
+const IconStar = ({ filled, size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"}>
     <path d="M12 2.5l2.7 5.9 6.4.6-4.8 4.3 1.4 6.3L12 16.9 6.3 19.6l1.4-6.3L2.9 9l6.4-.6z"
       stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
-const IconGrip = () => (
-  <svg width="11" height="17" viewBox="0 0 11 17" fill="currentColor">
+const IconGrip = ({ size = 17 }) => (
+  <svg width={Math.round(size * 0.647)} height={size} viewBox="0 0 11 17" fill="currentColor">
     <circle cx="3.5" cy="3" r="1.5"/><circle cx="7.5" cy="3" r="1.5"/>
     <circle cx="3.5" cy="8.5" r="1.5"/><circle cx="7.5" cy="8.5" r="1.5"/>
     <circle cx="3.5" cy="14" r="1.5"/><circle cx="7.5" cy="14" r="1.5"/>
@@ -75,7 +77,7 @@ const IconGrip = () => (
 );
 
 /* ─── task row ─── */
-function TaskRow({ task, t, fonts, colors, drag, isOver, spacing, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onUpdateQuestion, isQExpanded, onToggleQ }) {
+function TaskRow({ task, t, fonts, colors, drag, isOver, ui, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onUpdateQuestion, isQExpanded, onToggleQ }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.text);
   const isHold = task.status === "hold";
@@ -100,7 +102,7 @@ function TaskRow({ task, t, fonts, colors, drag, isOver, spacing, onEdit, onSetC
 
   const iconBtn = {
     background: "none", border: "none", cursor: "pointer",
-    padding: `${spacing.btnPad}px`, display: "flex", alignItems: "center",
+    padding: `${ui.btnPad}px`, display: "flex", alignItems: "center",
   };
 
   return (
@@ -113,7 +115,7 @@ function TaskRow({ task, t, fonts, colors, drag, isOver, spacing, onEdit, onSetC
         onDragEnd={() => drag.onEnd()}
         style={{
           display: "flex", alignItems: "center", gap: "4px",
-          padding: `${spacing.padY}px ${spacing.padX}px`,
+          padding: `${ui.padY}px ${ui.padX}px`,
           borderRadius: isQExpanded ? "6px 6px 0 0" : "6px",
           background: tint, border,
           borderBottom: isQExpanded ? "none" : undefined,
@@ -123,19 +125,20 @@ function TaskRow({ task, t, fonts, colors, drag, isOver, spacing, onEdit, onSetC
         {/* drag handle */}
         {drag.enabled && (
           <span style={{ color: t.textFaint, cursor: "grab", display: "flex", flexShrink: 0 }}>
-            <IconGrip />
+            <IconGrip size={ui.grip} />
           </span>
         )}
 
         {/* checkbox — click to complete */}
         <button onClick={() => onStatusChange(task.id, "done")} title="Mark done"
           style={{
-            width: "20px", height: "20px", borderRadius: "4px", cursor: "pointer",
+            width: `${ui.checkbox}px`, height: `${ui.checkbox}px`,
+            borderRadius: "4px", cursor: "pointer",
             border: `1.5px solid ${t.textFaint}`, background: "transparent",
             display: "flex", alignItems: "center", justifyContent: "center",
             color: t.accent, flexShrink: 0, padding: 0,
           }}>
-          <span style={{ opacity: 0.32 }}><IconCheck size={12} /></span>
+          <span style={{ opacity: 0.32 }}><IconCheck size={ui.innerCheck} /></span>
         </button>
 
         {/* text (click to edit) */}
@@ -150,7 +153,7 @@ function TaskRow({ task, t, fonts, colors, drag, isOver, spacing, onEdit, onSetC
               if (e.key === "Escape") { setDraft(task.text); setEditing(false); }
             }}
             style={{
-              flex: 1, fontFamily: fonts.body, fontSize: `${spacing.taskFont}px`,
+              flex: 1, fontFamily: fonts.body, fontSize: `${ui.taskFont}px`,
               padding: "2px 5px", borderRadius: "3px",
               border: `1px solid ${t.accentBorder}`, background: t.surface,
               color: t.text, outline: "none",
@@ -159,50 +162,50 @@ function TaskRow({ task, t, fonts, colors, drag, isOver, spacing, onEdit, onSetC
         ) : (
           <span onClick={startEdit} title="Click to edit"
             style={{
-              flex: 1, fontFamily: fonts.body, fontSize: `${spacing.taskFont}px`,
+              flex: 1, fontFamily: fonts.body, fontSize: `${ui.taskFont}px`,
               color: isHold ? t.holdText : t.text, lineHeight: 1.35,
               fontStyle: isHold ? "italic" : "normal", cursor: "text",
               marginLeft: "4px",
             }}>
             {task.text}
-            {isHold && <span style={{ fontSize: "13px", marginLeft: "8px", opacity: 0.7 }}>⏸ on hold</span>}
+            {isHold && <span style={{ fontSize: `${Math.round(ui.taskFont * 0.72)}px`, marginLeft: "8px", opacity: 0.7 }}>⏸ on hold</span>}
           </span>
         )}
 
         {/* date */}
         <span style={{
-          fontFamily: fonts.heading, fontSize: "16px",
+          fontFamily: fonts.heading, fontSize: `${ui.date}px`,
           color: t.textMuted, flexShrink: 0, whiteSpace: "nowrap", marginRight: "4px",
         }}>{formatDate(task.created)}</span>
 
         {/* per-task colour */}
-        <ColorPicker value={task.color || null} t={t} colors={colors} allowNone
+        <ColorPicker value={task.color || null} t={t} colors={colors} size={ui.swatch} allowNone
           onChange={(c) => onSetColor(task.id, c)} />
 
         {/* star toggle */}
         <button onClick={() => onToggleStar(task.id)} title={isStar ? "Unstar" : "Star"}
           style={{ ...iconBtn, color: isStar ? t.star : t.textFaint }}>
-          <IconStar filled={isStar} />
+          <IconStar filled={isStar} size={ui.star} />
         </button>
 
         {/* question toggle */}
         <button onClick={() => onToggleQ(task.id)}
           title={isQExpanded ? "Collapse question" : "Add/view question"}
           style={{ ...iconBtn, color: hasQ ? t.question : t.textFaint }}>
-          <IconQuestion />
+          <IconQuestion size={ui.icon} />
         </button>
 
         {/* hold toggle */}
         <button onClick={() => onStatusChange(task.id, isHold ? "active" : "hold")}
           title={isHold ? "Resume" : "Put on hold"}
           style={{ ...iconBtn, color: isHold ? t.holdText : t.textFaint }}>
-          {isHold ? <IconUndo /> : <IconPause />}
+          {isHold ? <IconUndo size={ui.icon} /> : <IconPause size={ui.icon} />}
         </button>
 
         {/* delete */}
         <button onClick={() => onDelete(task.id)} title="Move to trash"
           style={{ ...iconBtn, color: t.textFaint }}>
-          <IconTrash />
+          <IconTrash size={ui.icon} />
         </button>
       </div>
 
@@ -257,34 +260,34 @@ function TaskRow({ task, t, fonts, colors, drag, isOver, spacing, onEdit, onSetC
 }
 
 /* ─── done row ─── */
-function DoneRow({ task, t, fonts, onRestore, onDelete }) {
+function DoneRow({ task, t, fonts, ui, onRestore, onDelete }) {
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: "9px",
-      padding: "6px 10px", borderRadius: "5px",
+      padding: `${Math.max(2, ui.padY - 1)}px ${ui.padX + 6}px`, borderRadius: "5px",
       background: t.accentSoft,
     }}>
       {/* checked box — uncheck to move back to active */}
       <button onClick={() => onRestore(task.id)} title="Uncheck — move back to active"
         style={{
-          width: "20px", height: "20px", borderRadius: "4px",
+          width: `${ui.checkbox}px`, height: `${ui.checkbox}px`, borderRadius: "4px",
           background: t.accent, border: "none", cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
           color: t.accentText, flexShrink: 0, padding: 0,
-        }}><IconCheck size={13} /></button>
+        }}><IconCheck size={ui.doneCheck} /></button>
       <span style={{
-        flex: 1, fontFamily: fonts.body, fontSize: "16px",
+        flex: 1, fontFamily: fonts.body, fontSize: `${Math.round(ui.taskFont * 0.92)}px`,
         color: t.textMuted, textDecoration: "line-through",
         textDecorationColor: t.textFaint,
       }}>{task.text}</span>
       <span style={{
-        fontFamily: fonts.heading, fontSize: "15px", color: t.textFaint,
+        fontFamily: fonts.heading, fontSize: `${Math.round(ui.date * 0.94)}px`, color: t.textFaint,
       }}>{formatDate(task.created)}</span>
       <button onClick={() => onDelete(task.id)} title="Move to trash"
         style={{
           background: "none", border: "none", cursor: "pointer",
           padding: "3px", color: t.textFaint, display: "flex", alignItems: "center",
-        }}><IconTrash /></button>
+        }}><IconTrash size={ui.icon} /></button>
     </div>
   );
 }
@@ -568,8 +571,10 @@ export default function BulletJournal() {
       };
     });
 
-  const setSpacing = (key, value) =>
-    update((d) => ({ ...d, spacing: { ...d.spacing, [key]: value } }));
+  const setDensity = (id) =>
+    update((d) => ({ ...d, density: id, taskFont: getDensity(id).taskFont }));
+
+  const setTaskFont = (value) => update((d) => ({ ...d, taskFont: value }));
 
   const loadSamples = () => update((d) => rollIncompletes(withSampleWeeks(d)));
 
@@ -614,8 +619,27 @@ export default function BulletJournal() {
   }
 
   const t = theme;
-  const spacing = data.spacing;
   const paletteColors = getPalette(data.palette).colors;
+
+  // density-preset metrics + element sizes scaled to the text size
+  const density = getDensity(data.density);
+  const sc = data.taskFont / 16;
+  const px = (n) => Math.round(n * sc);
+  const ui = {
+    taskGap: density.taskGap,
+    padY: density.padY,
+    padX: density.padX,
+    btnPad: density.btnPad,
+    taskFont: data.taskFont,
+    checkbox: px(20),
+    swatch: px(20),
+    innerCheck: px(12),
+    doneCheck: px(13),
+    star: px(18),
+    icon: px(16),
+    grip: px(17),
+    date: px(16),
+  };
   const fonts = {
     heading: fontName ? "'BJCustom', cursive" : "'Caveat', cursive",
     body: fontName ? "'BJCustom', sans-serif" : "'Karla', sans-serif",
@@ -844,10 +868,10 @@ export default function BulletJournal() {
                   <button key={p.id} onClick={() => applyPreset(p)} title={p.name}
                     style={{
                       width: "96px", display: "flex", alignItems: "center",
-                      justifyContent: "center", gap: "5px",
+                      justifyContent: "flex-start", gap: "6px",
                       cursor: "pointer", borderRadius: "5px",
                       border: `1px solid ${t.border}`, background: t.surface,
-                      padding: "4px 0", fontFamily: fonts.body,
+                      padding: "4px 8px", fontFamily: fonts.body,
                       fontSize: "12px", color: t.textMuted,
                     }}>
                     <span style={{ display: "flex", gap: "3px" }}>
@@ -885,43 +909,49 @@ export default function BulletJournal() {
                 allowNone variant="bg"
                 onChange={(c) => setThemeKey("bg", c)} />
             </div>
-            {/* spacing sliders */}
+            {/* spacing density */}
             <div>
               <div style={{ ...settingRow, marginBottom: "4px" }}>spacing</div>
-              {[
-                ["taskGap", "row gap", 0, 20],
-                ["padY", "task pad ↕", 0, 22],
-                ["padX", "task pad ↔", 2, 30],
-                ["btnPad", "button pad", 0, 12],
-                ["taskFont", "text size", 12, 28],
-              ].map(([key, label, min, max]) => (
-                <div key={key} style={{ ...settingRow, gap: "8px", marginBottom: "3px" }}>
-                  <span style={{ flexShrink: 0, width: "76px" }}>{label}</span>
-                  <input type="range" min={min} max={max} value={spacing[key]}
-                    onChange={(e) => setSpacing(key, Number(e.target.value))}
-                    style={{ flex: 1, minWidth: 0, accentColor: t.accent }} />
-                  <span style={{ width: "22px", textAlign: "right" }}>{spacing[key]}</span>
-                </div>
-              ))}
+              <div style={{ display: "flex" }}>
+                {DENSITIES.map((dn, i) => (
+                  <button key={dn.id} onClick={() => setDensity(dn.id)}
+                    style={{
+                      ...segBtn(data.density === dn.id),
+                      borderRadius: i === 0 ? "5px 0 0 5px"
+                        : i === DENSITIES.length - 1 ? "0 5px 5px 0" : 0,
+                      borderLeft: i === 0 ? `1px solid ${t.border}` : "none",
+                    }}>{dn.id}</button>
+                ))}
+              </div>
             </div>
             {/* font */}
-            <div style={settingRow}>
-              <span>font</span>
-              <label style={{ ...linkBtn, cursor: "pointer", display: "flex",
-                alignItems: "center", gap: "4px" }}>
-                <span style={{ color: t.textMuted, fontSize: "13px" }}>
-                  {fontName || "default"}
-                </span>
-                ✎
-                <input type="file" accept=".otf,.ttf,font/otf,font/ttf"
-                  onChange={onFontFile} style={{ display: "none" }} />
-              </label>
+            <div>
+              <div style={{ ...settingRow, marginBottom: "4px" }}>
+                <span>font</span>
+                <label style={{ ...linkBtn, cursor: "pointer", display: "flex",
+                  alignItems: "center", gap: "4px" }}>
+                  <span style={{ color: t.textMuted, fontSize: "13px" }}>
+                    {fontName || "default"}
+                  </span>
+                  ✎
+                  <input type="file" accept=".otf,.ttf,font/otf,font/ttf"
+                    onChange={onFontFile} style={{ display: "none" }} />
+                </label>
+              </div>
+              {fontName && (
+                <button onClick={resetFont}
+                  style={{ ...linkBtn, color: t.danger, marginBottom: "4px" }}>
+                  reset font to default
+                </button>
+              )}
+              <div style={{ ...settingRow, gap: "8px" }}>
+                <span style={{ flexShrink: 0 }}>text size</span>
+                <input type="range" min={12} max={30} value={data.taskFont}
+                  onChange={(e) => setTaskFont(Number(e.target.value))}
+                  style={{ flex: 1, minWidth: 0, accentColor: t.accent }} />
+                <span style={{ width: "22px", textAlign: "right" }}>{data.taskFont}</span>
+              </div>
             </div>
-            {fontName && (
-              <button onClick={resetFont} style={{ ...linkBtn, color: t.danger }}>
-                reset font to default
-              </button>
-            )}
             <button onClick={loadSamples} style={{ ...linkBtn }}>
               + load sample weeks
             </button>
@@ -1093,7 +1123,7 @@ export default function BulletJournal() {
 
             {/* active tasks */}
             <div style={{ display: "flex", flexDirection: "column",
-              gap: `${spacing.taskGap}px`, marginBottom: "16px" }}>
+              gap: `${ui.taskGap}px`, marginBottom: "16px" }}>
               {activeTasks.length === 0 && holdTasks.length === 0 && (
                 <div style={{
                   textAlign: "center", padding: "30px 0",
@@ -1104,7 +1134,7 @@ export default function BulletJournal() {
               )}
               {activeTasks.map((x) => (
                 <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} drag={drag}
-                  spacing={spacing}
+                  ui={ui}
                   isOver={dragEnabled && overId === x.id && dragId !== x.id}
                   onEdit={editTask} onSetColor={setTaskColor}
                   onStatusChange={changeStatus} onDelete={deleteTask}
@@ -1121,10 +1151,10 @@ export default function BulletJournal() {
                   label={`on hold (${holdTasks.length})`} />
                 {showHold && (
                   <div style={{ display: "flex", flexDirection: "column",
-                    gap: `${spacing.taskGap}px` }}>
+                    gap: `${ui.taskGap}px` }}>
                     {holdTasks.map((x) => (
                       <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} drag={drag}
-                        spacing={spacing}
+                        ui={ui}
                         isOver={dragEnabled && overId === x.id && dragId !== x.id}
                         onEdit={editTask} onSetColor={setTaskColor}
                         onStatusChange={changeStatus} onDelete={deleteTask}
@@ -1152,7 +1182,7 @@ export default function BulletJournal() {
                 {showDone && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                     {doneTasks.map((x) => (
-                      <DoneRow key={x.id} task={x} t={t} fonts={fonts}
+                      <DoneRow key={x.id} task={x} t={t} fonts={fonts} ui={ui}
                         onRestore={(id) => changeStatus(id, "active")}
                         onDelete={deleteTask}/>
                     ))}
