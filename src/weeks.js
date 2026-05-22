@@ -56,7 +56,7 @@ export function getDensity(id) {
 
 export function defaultData() {
   return {
-    schemaVersion: 8,
+    schemaVersion: 9,
     tasks: [],
     trash: [],
     weekNotes: {},
@@ -67,6 +67,8 @@ export function defaultData() {
     palette: "default",
     density: "cozy",
     taskFont: 16,
+    headingFont: "caveat",
+    bodyFont: "karla",
     sampleLoaded: false,
   };
 }
@@ -153,6 +155,15 @@ export function migrate(data) {
     const bgLight = th.bg ?? null;
     delete th.bg;
     d = { ...d, schemaVersion: 8, theme: { ...th, bgLight, bgDark: null } };
+  }
+
+  if (d.schemaVersion < 9) {
+    d = {
+      ...d,
+      schemaVersion: 9,
+      headingFont: d.headingFont || "caveat",
+      bodyFont: d.bodyFont || "karla",
+    };
   }
 
   return d;
