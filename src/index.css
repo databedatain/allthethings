@@ -11,15 +11,15 @@ body {
 
 .bj-root {
   display: flex;
-  gap: 18px;
-  max-width: 780px;
+  gap: 22px;
+  max-width: 1060px;
   margin: 0 auto;
-  padding: 16px 14px 24px;
+  padding: 18px 18px 32px;
   align-items: flex-start;
 }
 
 .bj-sidebar {
-  width: 158px;
+  width: 188px;
   flex-shrink: 0;
 }
 
@@ -28,7 +28,7 @@ body {
   min-width: 0;
 }
 
-@media (max-width: 620px) {
+@media (max-width: 680px) {
   .bj-root {
     flex-direction: column;
   }

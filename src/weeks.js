@@ -1,5 +1,7 @@
 /* Week-bucket helpers, schema migration, incomplete-roll, and sample data. */
 
+import { THEME_DEFAULTS } from "./theme.js";
+
 export function mondayOf(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -34,34 +36,63 @@ export function weekLabel(key) {
 
 export function defaultData() {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     tasks: [],
     weekNotes: {},
+    weekNoteColors: {},
+    sortMode: "custom",
     sortOrder: "oldest",
     nextId: 1,
-    starColor: "#c8a04a",
+    theme: { ...THEME_DEFAULTS },
     sampleLoaded: false,
   };
 }
 
-// v1 ({tasks, notes, sortOrder, nextId}) -> v2
+// Bring any older snapshot up to schema v3.
 export function migrate(data) {
   if (!data) return defaultData();
-  if (data.schemaVersion >= 2) return data;
-  const tasks = (data.tasks || []).map((t) => ({
-    ...t,
-    week: weekKey(t.created),
-    starred: false,
-  }));
-  return {
-    schemaVersion: 2,
-    tasks,
-    weekNotes: data.notes ? { [currentWeekKey()]: data.notes } : {},
-    sortOrder: data.sortOrder || "oldest",
-    nextId: data.nextId || tasks.length + 1,
-    starColor: "#c8a04a",
-    sampleLoaded: false,
-  };
+  let d = data;
+
+  if (!d.schemaVersion || d.schemaVersion < 2) {
+    const tasks = (d.tasks || []).map((t) => ({
+      ...t,
+      week: weekKey(t.created),
+      starred: false,
+    }));
+    d = {
+      schemaVersion: 2,
+      tasks,
+      weekNotes: d.notes ? { [currentWeekKey()]: d.notes } : {},
+      sortOrder: d.sortOrder || "oldest",
+      nextId: d.nextId || tasks.length + 1,
+      starColor: "#EFB900",
+      sampleLoaded: false,
+    };
+  }
+
+  if (d.schemaVersion < 3) {
+    const tasks = [...(d.tasks || [])]
+      .sort((a, b) => a.created - b.created)
+      .map((t, i) => ({ ...t, order: i }));
+    d = {
+      schemaVersion: 3,
+      tasks,
+      weekNotes: d.weekNotes || {},
+      weekNoteColors: {},
+      sortMode: "custom",
+      sortOrder: d.sortOrder || "oldest",
+      nextId: d.nextId || tasks.length + 1,
+      theme: {
+        mode: "light",
+        highlight: THEME_DEFAULTS.highlight,
+        star: d.starColor || THEME_DEFAULTS.star,
+        hold: THEME_DEFAULTS.hold,
+      },
+      sampleLoaded: d.sampleLoaded || false,
+    };
+  }
+
+  return d;
 }
 
 // Move every not-done task out of past weeks into the current week (in place,
@@ -85,6 +116,7 @@ export function withSampleWeeks(data) {
   if (data.sampleLoaded) return data;
   const base = mondayOf(new Date());
   let id = data.nextId;
+  let order = data.tasks.reduce((m, t) => Math.max(m, t.order ?? 0), 0) + 1;
   const tasks = [...data.tasks];
   const weekNotes = { ...data.weekNotes };
   const weeks = [
@@ -139,6 +171,7 @@ export function withSampleWeeks(data) {
         created: created.getTime(),
         week: key,
         starred: !!starred,
+        order: order++,
       });
     });
   }
