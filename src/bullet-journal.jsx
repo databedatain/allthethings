@@ -322,7 +322,6 @@ export default function BulletJournal() {
 
   return (
     <>
-      <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Karla:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet"/>
       <div style={{
         maxWidth: "560px", margin: "0 auto", padding: "32px 20px 48px",
         fontFamily: "'Karla', sans-serif",
