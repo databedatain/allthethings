@@ -21,29 +21,45 @@ export function currentWeekKey() {
   return weekKey(new Date());
 }
 
-export function weekLabel(key) {
+// `full` forces the month onto both ends (e.g. "May 4 – May 10"); otherwise
+// the trailing month is dropped when both dates share it.
+export function weekLabel(key, full) {
+  const { left, right, sameMonth } = weekParts(key);
+  const tail = full || !sameMonth ? right : right.split(" ")[1];
+  return `${left} – ${tail}`;
+}
+
+// Month/day on each side of the range, for hyphen-aligned rendering.
+export function weekParts(key) {
   const mon = new Date(`${key}T00:00:00`);
   const sun = new Date(mon);
   sun.setDate(mon.getDate() + 6);
   const opt = { month: "short", day: "numeric" };
-  const monStr = mon.toLocaleDateString("default", opt);
-  const sunStr =
-    mon.getMonth() === sun.getMonth()
-      ? String(sun.getDate())
-      : sun.toLocaleDateString("default", opt);
-  return `${monStr} – ${sunStr}`;
+  return {
+    left: mon.toLocaleDateString("default", opt),
+    right: sun.toLocaleDateString("default", opt),
+    sameMonth: mon.getMonth() === sun.getMonth(),
+  };
 }
+
+export const SPACING_DEFAULTS = {
+  taskGap: 6,
+  padY: 7,
+  padX: 10,
+  btnPad: 3,
+  taskFont: 18,
+};
 
 export function defaultData() {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     tasks: [],
     weekNotes: {},
-    weekNoteColors: {},
     sortMode: "custom",
     sortOrder: "oldest",
     nextId: 1,
     theme: { ...THEME_DEFAULTS },
+    spacing: { ...SPACING_DEFAULTS },
     sampleLoaded: false,
   };
 }
@@ -90,6 +106,16 @@ export function migrate(data) {
       },
       sampleLoaded: d.sampleLoaded || false,
     };
+  }
+
+  if (d.schemaVersion < 4) {
+    d = {
+      ...d,
+      schemaVersion: 4,
+      tasks: d.tasks.map((x) => ({ ...x, color: x.color ?? null })),
+      spacing: { ...SPACING_DEFAULTS },
+    };
+    delete d.weekNoteColors;
   }
 
   return d;
@@ -171,6 +197,7 @@ export function withSampleWeeks(data) {
         created: created.getTime(),
         week: key,
         starred: !!starred,
+        color: null,
         order: order++,
       });
     });
