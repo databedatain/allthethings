@@ -15,7 +15,7 @@ import {
   applyFont,
   removeFontStyle,
 } from "./font.js";
-import { buildTheme, rgba } from "./theme.js";
+import { buildTheme, rgba, PRESETS, PALETTES, getPalette } from "./theme.js";
 import ColorPicker from "./color-picker.jsx";
 
 const STORAGE_KEY = "bullet-journal-data";
@@ -27,8 +27,8 @@ const formatDate = (ts) => {
 };
 
 /* ─── tiny icons ─── */
-const IconCheck = () => (
-  <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+const IconCheck = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
     <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
@@ -75,7 +75,7 @@ const IconGrip = () => (
 );
 
 /* ─── task row ─── */
-function TaskRow({ task, t, fonts, drag, isOver, spacing, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onUpdateQuestion, isQExpanded, onToggleQ }) {
+function TaskRow({ task, t, fonts, colors, drag, isOver, spacing, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onUpdateQuestion, isQExpanded, onToggleQ }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.text);
   const isHold = task.status === "hold";
@@ -127,15 +127,15 @@ function TaskRow({ task, t, fonts, drag, isOver, spacing, onEdit, onSetColor, on
           </span>
         )}
 
-        {/* checkbox / done */}
+        {/* checkbox — click to complete */}
         <button onClick={() => onStatusChange(task.id, "done")} title="Mark done"
           style={{
-            width: "24px", height: "24px", borderRadius: "4px", cursor: "pointer",
-            border: `1.5px solid ${t.accent}`, background: "transparent",
+            width: "20px", height: "20px", borderRadius: "4px", cursor: "pointer",
+            border: `1.5px solid ${t.textFaint}`, background: "transparent",
             display: "flex", alignItems: "center", justifyContent: "center",
             color: t.accent, flexShrink: 0, padding: 0,
           }}>
-          <span style={{ opacity: 0.28 }}><IconCheck /></span>
+          <span style={{ opacity: 0.32 }}><IconCheck size={12} /></span>
         </button>
 
         {/* text (click to edit) */}
@@ -162,6 +162,7 @@ function TaskRow({ task, t, fonts, drag, isOver, spacing, onEdit, onSetColor, on
               flex: 1, fontFamily: fonts.body, fontSize: `${spacing.taskFont}px`,
               color: isHold ? t.holdText : t.text, lineHeight: 1.35,
               fontStyle: isHold ? "italic" : "normal", cursor: "text",
+              marginLeft: "4px",
             }}>
             {task.text}
             {isHold && <span style={{ fontSize: "13px", marginLeft: "8px", opacity: 0.7 }}>⏸ on hold</span>}
@@ -171,11 +172,11 @@ function TaskRow({ task, t, fonts, drag, isOver, spacing, onEdit, onSetColor, on
         {/* date */}
         <span style={{
           fontFamily: fonts.heading, fontSize: "16px",
-          color: t.textMuted, flexShrink: 0, whiteSpace: "nowrap",
+          color: t.textMuted, flexShrink: 0, whiteSpace: "nowrap", marginRight: "4px",
         }}>{formatDate(task.created)}</span>
 
         {/* per-task colour */}
-        <ColorPicker value={task.color || null} t={t} allowNone
+        <ColorPicker value={task.color || null} t={t} colors={colors} allowNone
           onChange={(c) => onSetColor(task.id, c)} />
 
         {/* star toggle */}
@@ -199,7 +200,7 @@ function TaskRow({ task, t, fonts, drag, isOver, spacing, onEdit, onSetColor, on
         </button>
 
         {/* delete */}
-        <button onClick={() => onDelete(task.id)} title="Remove"
+        <button onClick={() => onDelete(task.id)} title="Move to trash"
           style={{ ...iconBtn, color: t.textFaint }}>
           <IconTrash />
         </button>
@@ -266,11 +267,11 @@ function DoneRow({ task, t, fonts, onRestore, onDelete }) {
       {/* checked box — uncheck to move back to active */}
       <button onClick={() => onRestore(task.id)} title="Uncheck — move back to active"
         style={{
-          width: "24px", height: "24px", borderRadius: "4px",
+          width: "20px", height: "20px", borderRadius: "4px",
           background: t.accent, border: "none", cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
           color: t.accentText, flexShrink: 0, padding: 0,
-        }}><IconCheck /></button>
+        }}><IconCheck size={13} /></button>
       <span style={{
         flex: 1, fontFamily: fonts.body, fontSize: "16px",
         color: t.textMuted, textDecoration: "line-through",
@@ -279,12 +280,82 @@ function DoneRow({ task, t, fonts, onRestore, onDelete }) {
       <span style={{
         fontFamily: fonts.heading, fontSize: "15px", color: t.textFaint,
       }}>{formatDate(task.created)}</span>
-      <button onClick={() => onDelete(task.id)} title="Remove"
+      <button onClick={() => onDelete(task.id)} title="Move to trash"
         style={{
           background: "none", border: "none", cursor: "pointer",
           padding: "3px", color: t.textFaint, display: "flex", alignItems: "center",
         }}><IconTrash /></button>
     </div>
+  );
+}
+
+/* ─── palette dropdown ─── */
+function PaletteSelect({ t, fonts, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const current = getPalette(value);
+  const dots = (cols) => (
+    <span style={{ display: "flex", gap: "2px" }}>
+      {cols.map((c, i) => (
+        <span key={i} style={{
+          width: "10px", height: "10px", borderRadius: "2px", background: c,
+        }} />
+      ))}
+    </span>
+  );
+  const rowStyle = (active) => ({
+    width: "100%", display: "flex", alignItems: "center",
+    justifyContent: "space-between", gap: "8px", cursor: "pointer",
+    borderRadius: "5px", padding: "5px 8px",
+    fontFamily: fonts.body, fontSize: "13px", color: t.textMuted,
+    border: "none", background: active ? t.accentSoft : "transparent",
+  });
+  return (
+    <span style={{ position: "relative", display: "block" }}>
+      <button onClick={() => setOpen((o) => !o)}
+        style={{ ...rowStyle(false), border: `1px solid ${t.border}`, background: t.surface }}>
+        <span>{current.name}</span>
+        {dots(current.colors)}
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+          <div style={{
+            position: "absolute", top: "34px", left: 0, right: 0, zIndex: 41,
+            background: t.popover, border: `1px solid ${t.border}`,
+            borderRadius: 6, padding: 4, boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
+          }}>
+            {PALETTES.map((p) => (
+              <button key={p.id} onClick={() => { onChange(p.id); setOpen(false); }}
+                style={rowStyle(p.id === value)}>
+                <span>{p.name}</span>
+                {dots(p.colors)}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </span>
+  );
+}
+
+/* ─── collapsible section header ─── */
+function SectionToggle({ t, fonts, open, onToggle, label, extra }) {
+  return (
+    <button onClick={onToggle} style={{
+      background: "none", border: "none", cursor: "pointer",
+      fontFamily: fonts.heading, fontSize: "19px",
+      color: t.textMuted, padding: "0 0 8px 0",
+      display: "flex", alignItems: "center", gap: "6px",
+    }}>
+      <span style={{
+        display: "inline-block",
+        transform: open ? "rotate(90deg)" : "rotate(0deg)",
+        transition: "transform 0.2s ease",
+      }}>▸</span>
+      {label}
+      {extra}
+    </button>
   );
 }
 
@@ -294,15 +365,18 @@ export default function BulletJournal() {
   const [input, setInput] = useState("");
   const [query, setQuery] = useState("");
   const [showDone, setShowDone] = useState(false);
+  const [showHold, setShowHold] = useState(true);
   const [expandedQ, setExpandedQ] = useState(() => new Set());
   const [loading, setLoading] = useState(true);
   const [selectedWeek, setSelectedWeek] = useState(currentWeekKey());
   const [fontName, setFontName] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
   const [dragId, setDragId] = useState(null);
   const [overId, setOverId] = useState(null);
   const saveTimer = useRef(null);
   const inputRef = useRef(null);
+  const history = useRef({ past: [], future: [] });
 
   // load
   useEffect(() => {
@@ -333,10 +407,55 @@ export default function BulletJournal() {
   const update = useCallback((fn) => {
     setData((prev) => {
       const next = fn(prev);
+      if (next === prev) return prev;
+      const h = history.current;
+      h.past.push(prev);
+      if (h.past.length > 80) h.past.shift();
+      h.future = [];
       save(next);
       return next;
     });
   }, [save]);
+
+  const undo = useCallback(() => {
+    setData((cur) => {
+      const h = history.current;
+      if (!h.past.length) return cur;
+      h.future.unshift(cur);
+      const prev = h.past.pop();
+      save(prev);
+      return prev;
+    });
+  }, [save]);
+
+  const redo = useCallback(() => {
+    setData((cur) => {
+      const h = history.current;
+      if (!h.future.length) return cur;
+      h.past.push(cur);
+      const next = h.future.shift();
+      save(next);
+      return next;
+    });
+  }, [save]);
+
+  // keyboard undo / redo (ignored while typing in a field)
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = (e.target.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea") return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        e.shiftKey ? redo() : undo();
+      } else if (mod && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undo, redo]);
 
   const theme = data ? buildTheme(data.theme) : buildTheme({});
 
@@ -389,7 +508,31 @@ export default function BulletJournal() {
     }));
 
   const deleteTask = (id) =>
-    update((d) => ({ ...d, tasks: d.tasks.filter((x) => x.id !== id) }));
+    update((d) => {
+      const task = d.tasks.find((x) => x.id === id);
+      if (!task) return d;
+      return {
+        ...d,
+        tasks: d.tasks.filter((x) => x.id !== id),
+        trash: [task, ...d.trash].slice(0, 60),
+      };
+    });
+
+  const restoreFromTrash = (id) =>
+    update((d) => {
+      const task = d.trash.find((x) => x.id === id);
+      if (!task) return d;
+      return {
+        ...d,
+        trash: d.trash.filter((x) => x.id !== id),
+        tasks: [...d.tasks, task],
+      };
+    });
+
+  const deleteForever = (id) =>
+    update((d) => ({ ...d, trash: d.trash.filter((x) => x.id !== id) }));
+
+  const emptyTrash = () => update((d) => ({ ...d, trash: [] }));
 
   const toggleStar = (id) =>
     update((d) => ({
@@ -406,6 +549,24 @@ export default function BulletJournal() {
 
   const setThemeKey = (key, value) =>
     update((d) => ({ ...d, theme: { ...d.theme, [key]: value } }));
+
+  const applyPreset = (p) =>
+    update((d) => ({
+      ...d,
+      theme: { ...d.theme, highlight: p.highlight, star: p.star, hold: p.hold },
+    }));
+
+  const selectPalette = (id) =>
+    update((d) => {
+      const first = PRESETS.find((p) => p.palette === id);
+      return {
+        ...d,
+        palette: id,
+        theme: first
+          ? { ...d.theme, highlight: first.highlight, star: first.star, hold: first.hold }
+          : d.theme,
+      };
+    });
 
   const setSpacing = (key, value) =>
     update((d) => ({ ...d, spacing: { ...d.spacing, [key]: value } }));
@@ -454,6 +615,7 @@ export default function BulletJournal() {
 
   const t = theme;
   const spacing = data.spacing;
+  const paletteColors = getPalette(data.palette).colors;
   const fonts = {
     heading: fontName ? "'BJCustom', cursive" : "'Caveat', cursive",
     body: fontName ? "'BJCustom', sans-serif" : "'Karla', sans-serif",
@@ -469,7 +631,6 @@ export default function BulletJournal() {
   weekSet.add(cur);
   const weeksDesc = [...weekSet].sort().reverse();
 
-  // active-task ordering: starred first, hold last, then sort mode
   const byMode = (a, b) =>
     data.sortMode === "custom"
       ? (a.order ?? 0) - (b.order ?? 0)
@@ -480,18 +641,12 @@ export default function BulletJournal() {
     if (!!a.starred !== !!b.starred) return a.starred ? -1 : 1;
     return byMode(a, b);
   };
-  const sortActive = (list) => {
-    const nonHold = list.filter((x) => x.status !== "hold").sort(cmp);
-    const hold = list.filter((x) => x.status === "hold").sort(cmp);
-    return [...nonHold, ...hold];
-  };
 
   const inView = isEverything
     ? data.tasks
     : data.tasks.filter((x) => x.week === selectedWeek);
-  const activeTasks = sortActive(
-    inView.filter((x) => x.status === "active" || x.status === "hold")
-  );
+  const activeTasks = inView.filter((x) => x.status === "active").sort(cmp);
+  const holdTasks = inView.filter((x) => x.status === "hold").sort(cmp);
   const doneTasks = inView.filter((x) => x.status === "done");
 
   const clearDone = () =>
@@ -499,18 +654,21 @@ export default function BulletJournal() {
       ...d,
       tasks: d.tasks.filter((x) => {
         if (x.status !== "done") return true;
-        return isEverything ? false : x.week !== selectedWeek;
+        return x.week !== selectedWeek;
       }),
     }));
 
-  // drag reorder within the visible active list
+  // drag reorder within whichever list (active or hold) holds both rows
   const dragEnabled = data.sortMode === "custom" && !searching;
   const handleDrop = (targetId) => {
     if (dragId == null || dragId === targetId) return;
-    const ids = activeTasks.map((x) => x.id);
+    const list = [activeTasks, holdTasks].find(
+      (L) => L.some((x) => x.id === targetId) && L.some((x) => x.id === dragId)
+    );
+    if (!list) return;
+    const ids = list.map((x) => x.id);
     const from = ids.indexOf(dragId);
     const to = ids.indexOf(targetId);
-    if (from < 0 || to < 0) return;
     ids.splice(to, 0, ids.splice(from, 1)[0]);
     const orderMap = new Map(ids.map((id, i) => [id, i]));
     update((d) => ({
@@ -536,16 +694,14 @@ export default function BulletJournal() {
     ? data.tasks.filter((x) => x.text.toLowerCase().includes(q))
     : [];
   const noteHits = searching
-    ? Object.entries(data.weekNotes).filter(
-        ([, v]) => v && v.toLowerCase().includes(q)
-      )
+    ? Object.entries(data.weekNotes).filter(([, v]) => v && v.toLowerCase().includes(q))
     : [];
 
   const goToWeek = (wk) => { setSelectedWeek(wk); setQuery(""); };
 
   /* ── shared style helpers ── */
   const navBtn = (active) => ({
-    width: "100%", textAlign: "left",
+    width: "100%", textAlign: "center",
     background: active ? t.accentSoft : "transparent",
     border: "none", cursor: "pointer", borderRadius: "5px",
     padding: "7px 10px", marginBottom: "2px",
@@ -570,6 +726,11 @@ export default function BulletJournal() {
     color: active ? t.accentText : t.textMuted,
     fontFamily: fonts.body, fontSize: "13px",
   });
+  const panelToggle = {
+    display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+    width: "100%", background: "none", border: "none", cursor: "pointer",
+    padding: "4px", fontFamily: fonts.heading, fontSize: "17px", color: t.textMuted,
+  };
 
   const addBox = canAdd && (
     <div style={{ display: "flex", gap: "6px" }}>
@@ -593,6 +754,16 @@ export default function BulletJournal() {
     </div>
   );
 
+  const undoBtn = (label, fn) => (
+    <button onClick={fn} title={label}
+      style={{
+        width: "32px", height: "32px", borderRadius: "6px",
+        border: `1px solid ${t.border}`, background: t.surface,
+        cursor: "pointer", color: t.textMuted, fontSize: "16px",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>{label === "Undo" ? "↶" : "↷"}</button>
+  );
+
   return (
     <div className="bj-root">
       {/* ─── sidebar ─── */}
@@ -606,7 +777,7 @@ export default function BulletJournal() {
             border: `1px solid ${t.border}`, background: t.surface,
             fontFamily: fonts.body, fontSize: "14px",
             outline: "none", color: t.text, marginBottom: "8px",
-            boxSizing: "border-box",
+            boxSizing: "border-box", textAlign: "center",
           }}
         />
         <button style={navBtn(isEverything && !searching)}
@@ -636,13 +807,7 @@ export default function BulletJournal() {
         <div style={divider} />
 
         {/* settings panel */}
-        <button
-          onClick={() => setSettingsOpen((o) => !o)}
-          style={{
-            display: "flex", alignItems: "center", gap: "6px",
-            background: "none", border: "none", cursor: "pointer", padding: "4px",
-            fontFamily: fonts.heading, fontSize: "17px", color: t.textMuted,
-          }}>
+        <button onClick={() => setSettingsOpen((o) => !o)} style={panelToggle}>
           <span style={{
             display: "inline-block",
             transform: settingsOpen ? "rotate(90deg)" : "rotate(0deg)",
@@ -653,7 +818,7 @@ export default function BulletJournal() {
         {settingsOpen && (
           <div style={{
             padding: "8px 4px 4px", display: "flex",
-            flexDirection: "column", gap: "11px",
+            flexDirection: "column", gap: "12px",
           }}>
             {/* light / dark */}
             <div>
@@ -665,21 +830,60 @@ export default function BulletJournal() {
                   onClick={() => setThemeKey("mode", "dark")}>dark</button>
               </div>
             </div>
+            {/* palette */}
+            <div>
+              <div style={{ ...settingRow, marginBottom: "4px" }}>palette</div>
+              <PaletteSelect t={t} fonts={fonts} value={data.palette}
+                onChange={selectPalette} />
+            </div>
+            {/* theme presets for the active palette */}
+            <div>
+              <div style={{ ...settingRow, marginBottom: "4px" }}>theme</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
+                {PRESETS.filter((p) => p.palette === data.palette).map((p) => (
+                  <button key={p.id} onClick={() => applyPreset(p)} title={p.name}
+                    style={{
+                      width: "96px", display: "flex", alignItems: "center",
+                      justifyContent: "center", gap: "5px",
+                      cursor: "pointer", borderRadius: "5px",
+                      border: `1px solid ${t.border}`, background: t.surface,
+                      padding: "4px 0", fontFamily: fonts.body,
+                      fontSize: "12px", color: t.textMuted,
+                    }}>
+                    <span style={{ display: "flex", gap: "3px" }}>
+                      {[p.highlight, p.star, p.hold].map((c, i) => (
+                        <span key={i} style={{
+                          width: "9px", height: "9px", borderRadius: "50%",
+                          background: c, display: "inline-block",
+                        }} />
+                      ))}
+                    </span>
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
             {/* colour pickers */}
             <div style={settingRow}>
               <span>UI Highlight</span>
-              <ColorPicker value={data.theme.highlight} t={t}
+              <ColorPicker value={data.theme.highlight} t={t} colors={paletteColors}
                 onChange={(c) => c && setThemeKey("highlight", c)} />
             </div>
             <div style={settingRow}>
               <span>Star Color</span>
-              <ColorPicker value={data.theme.star} t={t}
+              <ColorPicker value={data.theme.star} t={t} colors={paletteColors}
                 onChange={(c) => c && setThemeKey("star", c)} />
             </div>
             <div style={settingRow}>
               <span>Hold Color</span>
-              <ColorPicker value={data.theme.hold} t={t}
+              <ColorPicker value={data.theme.hold} t={t} colors={paletteColors}
                 onChange={(c) => c && setThemeKey("hold", c)} />
+            </div>
+            <div style={settingRow}>
+              <span>Background</span>
+              <ColorPicker value={data.theme.bg || null} t={t} colors={paletteColors}
+                allowNone variant="bg"
+                onChange={(c) => setThemeKey("bg", c)} />
             </div>
             {/* spacing sliders */}
             <div>
@@ -718,9 +922,49 @@ export default function BulletJournal() {
                 reset font to default
               </button>
             )}
-            {!data.sampleLoaded && (
-              <button onClick={loadSamples} style={{ ...linkBtn }}>
-                + load sample weeks
+            <button onClick={loadSamples} style={{ ...linkBtn }}>
+              + load sample weeks
+            </button>
+          </div>
+        )}
+
+        {/* trash bin */}
+        <button onClick={() => setTrashOpen((o) => !o)} style={panelToggle}>
+          <span style={{
+            display: "inline-block",
+            transform: trashOpen ? "rotate(90deg)" : "rotate(0deg)",
+            transition: "transform 0.2s ease",
+          }}>▸</span>
+          🗑 trash ({data.trash.length})
+        </button>
+        {trashOpen && (
+          <div style={{ padding: "6px 4px 4px", display: "flex",
+            flexDirection: "column", gap: "5px" }}>
+            {data.trash.length === 0 && (
+              <div style={{ fontFamily: fonts.body, fontSize: "13px",
+                color: t.textFaint, textAlign: "center" }}>empty</div>
+            )}
+            {data.trash.map((x) => (
+              <div key={x.id} style={{
+                display: "flex", alignItems: "center", gap: "6px",
+                fontFamily: fonts.body, fontSize: "13px", color: t.textMuted,
+              }}>
+                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis",
+                  whiteSpace: "nowrap" }}>{x.text}</span>
+                <button onClick={() => restoreFromTrash(x.id)} title="Restore"
+                  style={{ background: "none", border: "none", cursor: "pointer",
+                    padding: "2px", color: t.question, display: "flex" }}>
+                  <IconUndo />
+                </button>
+                <button onClick={() => deleteForever(x.id)} title="Delete forever"
+                  style={{ background: "none", border: "none", cursor: "pointer",
+                    padding: 0, color: t.danger, fontSize: "14px" }}>✕</button>
+              </div>
+            ))}
+            {data.trash.length > 0 && (
+              <button onClick={emptyTrash} style={{ ...linkBtn, color: t.danger,
+                textAlign: "center", marginTop: "2px" }}>
+                empty trash
               </button>
             )}
           </div>
@@ -761,7 +1005,7 @@ export default function BulletJournal() {
                       <span style={{ fontFamily: fonts.heading, fontSize: "14px",
                         color: t.textMuted, whiteSpace: "nowrap" }}>
                         {x.week === cur ? "this week" : weekLabel(x.week, true)}
-                        {x.status === "done" ? " · done" : ""}
+                        {x.status === "done" ? " · done" : x.status === "hold" ? " · hold" : ""}
                       </span>
                     </button>
                   ))}
@@ -797,7 +1041,7 @@ export default function BulletJournal() {
           </div>
         ) : (
           <>
-            {/* header (one line) + inline add-task */}
+            {/* header + undo/redo + inline add-task */}
             <div style={{
               display: "flex", alignItems: "flex-end", justifyContent: "space-between",
               gap: "16px", flexWrap: "wrap", marginBottom: "14px",
@@ -816,11 +1060,15 @@ export default function BulletJournal() {
                   </span>
                 </h1>
               )}
-              {addBox}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                {undoBtn("Undo", undo)}
+                {undoBtn("Redo", redo)}
+                {addBox}
+              </div>
             </div>
 
             {/* sort control */}
-            {activeTasks.length > 1 && (
+            {(activeTasks.length + holdTasks.length) > 1 && (
               <div style={{ display: "flex", justifyContent: "flex-end",
                 gap: "12px", marginBottom: "7px" }}>
                 <button onClick={() => setSortMode(data.sortMode === "custom" ? "date" : "custom")}
@@ -846,7 +1094,7 @@ export default function BulletJournal() {
             {/* active tasks */}
             <div style={{ display: "flex", flexDirection: "column",
               gap: `${spacing.taskGap}px`, marginBottom: "16px" }}>
-              {activeTasks.length === 0 && (
+              {activeTasks.length === 0 && holdTasks.length === 0 && (
                 <div style={{
                   textAlign: "center", padding: "30px 0",
                   fontFamily: fonts.heading, fontSize: "21px", color: t.textFaint,
@@ -855,7 +1103,7 @@ export default function BulletJournal() {
                 </div>
               )}
               {activeTasks.map((x) => (
-                <TaskRow key={x.id} task={x} t={t} fonts={fonts} drag={drag}
+                <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} drag={drag}
                   spacing={spacing}
                   isOver={dragEnabled && overId === x.id && dragId !== x.id}
                   onEdit={editTask} onSetColor={setTaskColor}
@@ -865,29 +1113,42 @@ export default function BulletJournal() {
               ))}
             </div>
 
+            {/* on-hold section */}
+            {holdTasks.length > 0 && (
+              <div style={{ marginBottom: "16px" }}>
+                <SectionToggle t={t} fonts={fonts} open={showHold}
+                  onToggle={() => setShowHold(!showHold)}
+                  label={`on hold (${holdTasks.length})`} />
+                {showHold && (
+                  <div style={{ display: "flex", flexDirection: "column",
+                    gap: `${spacing.taskGap}px` }}>
+                    {holdTasks.map((x) => (
+                      <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} drag={drag}
+                        spacing={spacing}
+                        isOver={dragEnabled && overId === x.id && dragId !== x.id}
+                        onEdit={editTask} onSetColor={setTaskColor}
+                        onStatusChange={changeStatus} onDelete={deleteTask}
+                        onToggleStar={toggleStar} onUpdateQuestion={updateQuestion}
+                        isQExpanded={expandedQ.has(x.id)} onToggleQ={toggleQ}/>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* done section */}
             {doneTasks.length > 0 && (
               <div style={{ marginBottom: "16px" }}>
-                <button onClick={() => setShowDone(!showDone)} style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  fontFamily: fonts.heading, fontSize: "19px",
-                  color: t.textMuted, padding: "0 0 8px 0",
-                  display: "flex", alignItems: "center", gap: "6px",
-                }}>
-                  <span style={{
-                    display: "inline-block",
-                    transform: showDone ? "rotate(90deg)" : "rotate(0deg)",
-                    transition: "transform 0.2s ease",
-                  }}>▸</span>
-                  done ({doneTasks.length})
-                  {!showDone && (
+                <SectionToggle t={t} fonts={fonts} open={showDone}
+                  onToggle={() => setShowDone(!showDone)}
+                  label={`done (${doneTasks.length})`}
+                  extra={!showDone && !isEverything && (
                     <span onClick={(e) => { e.stopPropagation(); clearDone(); }}
                       style={{ fontSize: "14px", marginLeft: "8px", color: t.danger }}
-                      title="Clear done in this view">
+                      title="Clear done in this week">
                       clear
                     </span>
-                  )}
-                </button>
+                  )} />
                 {showDone && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                     {doneTasks.map((x) => (
@@ -895,11 +1156,13 @@ export default function BulletJournal() {
                         onRestore={(id) => changeStatus(id, "active")}
                         onDelete={deleteTask}/>
                     ))}
-                    <button onClick={clearDone} style={{
-                      background: "none", border: "none", cursor: "pointer",
-                      fontFamily: fonts.heading, fontSize: "15px",
-                      color: t.danger, padding: "8px 0 0", textAlign: "left",
-                    }}>clear done in this view</button>
+                    {!isEverything && (
+                      <button onClick={clearDone} style={{
+                        background: "none", border: "none", cursor: "pointer",
+                        fontFamily: fonts.heading, fontSize: "15px",
+                        color: t.danger, padding: "8px 0 0", textAlign: "left",
+                      }}>clear done in this week</button>
+                    )}
                   </div>
                 )}
               </div>
