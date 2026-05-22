@@ -1,0 +1,38 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+body {
+  background: linear-gradient(180deg, #faf8f4 0%, #f4f1eb 100%);
+}
+
+.bj-root {
+  display: flex;
+  gap: 18px;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 16px 14px 24px;
+  align-items: flex-start;
+}
+
+.bj-sidebar {
+  width: 158px;
+  flex-shrink: 0;
+}
+
+.bj-main {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 620px) {
+  .bj-root {
+    flex-direction: column;
+  }
+  .bj-sidebar {
+    width: 100%;
+  }
+}

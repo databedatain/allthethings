@@ -1,4 +1,5 @@
 import "./storage.js";
+import "./index.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import BulletJournal from "./bullet-journal.jsx";

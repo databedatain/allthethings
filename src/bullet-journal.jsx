@@ -1,31 +1,31 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  defaultData,
+  migrate,
+  rollIncompletes,
+  withSampleWeeks,
+  currentWeekKey,
+  weekLabel,
+} from "./weeks.js";
+import {
+  loadFont,
+  saveFont,
+  clearFont,
+  applyFont,
+  removeFontStyle,
+} from "./font.js";
 
 const STORAGE_KEY = "bullet-journal-data";
-
-const defaultData = () => ({
-  tasks: [],
-  notes: "",
-  sortOrder: "oldest",
-  nextId: 1,
-});
 
 const formatDate = (ts) => {
   const d = new Date(ts);
   const mo = d.toLocaleString("default", { month: "short" });
-  const day = d.getDate();
-  return `${mo} ${day}`;
+  return `${mo} ${d.getDate()}`;
 };
 
-const weekRange = () => {
-  const now = new Date();
-  const day = now.getDay();
-  const mon = new Date(now);
-  mon.setDate(now.getDate() - ((day + 6) % 7));
-  const sun = new Date(mon);
-  sun.setDate(mon.getDate() + 6);
-  const fmt = (d) =>
-    d.toLocaleDateString("default", { month: "short", day: "numeric" });
-  return `${fmt(mon)} – ${fmt(sun)}`;
+const hexToRgba = (hex, a) => {
+  const n = parseInt(hex.replace("#", ""), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
 };
 
 /* ─── tiny icons ─── */
@@ -62,19 +62,36 @@ const IconQuestion = () => (
     <circle cx="7" cy="10" r="0.6" fill="currentColor"/>
   </svg>
 );
+const IconStar = ({ filled }) => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"}>
+    <path d="M12 2.5l2.7 5.9 6.4.6-4.8 4.3 1.4 6.3L12 16.9 6.3 19.6l1.4-6.3L2.9 9l6.4-.6z"
+      stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
 
 /* ─── task row ─── */
-function TaskRow({ task, onStatusChange, onDelete, onUpdateQuestion, isQExpanded, onToggleQ }) {
+function TaskRow({ task, fonts, starColor, onStatusChange, onDelete, onToggleStar, onUpdateQuestion, isQExpanded, onToggleQ }) {
   const isHold = task.status === "hold";
+  const isStar = !!task.starred;
   const hasQ = task.questionWho || task.questionText;
+
+  const bg = isStar
+    ? hexToRgba(starColor, 0.14)
+    : isHold
+    ? "rgba(120,120,120,0.09)"
+    : "rgba(255,255,255,0.45)";
+  const border = isStar
+    ? `1px solid ${hexToRgba(starColor, 0.55)}`
+    : isHold
+    ? "1px dashed rgba(120,120,120,0.45)"
+    : "1px solid rgba(0,0,0,0.06)";
+
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <div style={{
-        display: "flex", alignItems: "center", gap: "10px",
-        padding: "10px 12px", borderRadius: isQExpanded ? "6px 6px 0 0" : "6px",
-        background: isHold ? "rgba(204,163,71,0.08)" : "rgba(255,255,255,0.45)",
-        border: isHold ? "1px dashed rgba(204,163,71,0.4)" : "1px solid rgba(0,0,0,0.06)",
-        borderBottom: isQExpanded ? "none" : undefined,
+        display: "flex", alignItems: "center", gap: "8px",
+        padding: "9px 11px", borderRadius: isQExpanded ? "6px 6px 0 0" : "6px",
+        background: bg, border, borderBottom: isQExpanded ? "none" : undefined,
         transition: "all 0.2s ease",
       }}>
         {/* checkbox / done */}
@@ -90,27 +107,35 @@ function TaskRow({ task, onStatusChange, onDelete, onUpdateQuestion, isQExpanded
 
         {/* text */}
         <span style={{
-          flex: 1, fontFamily: "'Karla', sans-serif", fontSize: "15px",
-          color: isHold ? "#8a7540" : "#2c2c2c", lineHeight: 1.4,
+          flex: 1, fontFamily: fonts.body, fontSize: "15px",
+          color: isHold ? "#777" : "#2c2c2c", lineHeight: 1.4,
           fontStyle: isHold ? "italic" : "normal",
         }}>
           {task.text}
-          {isHold && <span style={{ fontSize: "11px", marginLeft: "8px", opacity: 0.6 }}>⏸ on hold</span>}
+          {isHold && <span style={{ fontSize: "11px", marginLeft: "8px", opacity: 0.65 }}>⏸ on hold</span>}
         </span>
 
         {/* date */}
         <span style={{
-          fontFamily: "'Caveat', cursive", fontSize: "13px",
+          fontFamily: fonts.heading, fontSize: "13px",
           color: "#999", flexShrink: 0, whiteSpace: "nowrap",
         }}>{formatDate(task.created)}</span>
+
+        {/* star toggle */}
+        <button onClick={() => onToggleStar(task.id)} title={isStar ? "Unstar" : "Star"}
+          style={{
+            background: "none", border: "none", cursor: "pointer", padding: "4px",
+            color: isStar ? starColor : "#ccc", display: "flex", alignItems: "center",
+          }}>
+          <IconStar filled={isStar} />
+        </button>
 
         {/* question toggle */}
         <button onClick={() => onToggleQ(task.id)}
           title={isQExpanded ? "Collapse question" : "Add/view question"}
           style={{
             background: "none", border: "none", cursor: "pointer", padding: "4px",
-            color: isQExpanded ? "#6a8dba" : hasQ ? "#6a8dba" : "#ccc",
-            display: "flex", alignItems: "center",
+            color: hasQ ? "#6a8dba" : "#ccc", display: "flex", alignItems: "center",
             fontWeight: hasQ ? "bold" : "normal",
           }}>
           <IconQuestion />
@@ -121,7 +146,7 @@ function TaskRow({ task, onStatusChange, onDelete, onUpdateQuestion, isQExpanded
           title={isHold ? "Resume" : "Put on hold"}
           style={{
             background: "none", border: "none", cursor: "pointer", padding: "4px",
-            color: isHold ? "#b8942e" : "#bbb", display: "flex", alignItems: "center",
+            color: isHold ? "#888" : "#bbb", display: "flex", alignItems: "center",
           }}>
           {isHold ? <IconUndo /> : <IconPause />}
         </button>
@@ -146,7 +171,7 @@ function TaskRow({ task, onStatusChange, onDelete, onUpdateQuestion, isQExpanded
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <label style={{
-              fontFamily: "'Caveat', cursive", fontSize: "14px",
+              fontFamily: fonts.heading, fontSize: "14px",
               color: "#6a8dba", flexShrink: 0, width: "36px",
             }}>who</label>
             <input
@@ -157,14 +182,14 @@ function TaskRow({ task, onStatusChange, onDelete, onUpdateQuestion, isQExpanded
                 flex: 1, padding: "5px 8px", borderRadius: "4px",
                 border: "1px solid rgba(106,141,186,0.2)",
                 background: "rgba(255,255,255,0.6)",
-                fontFamily: "'Karla', sans-serif", fontSize: "13px",
+                fontFamily: fonts.body, fontSize: "13px",
                 outline: "none", color: "#2c2c2c",
               }}
             />
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <label style={{
-              fontFamily: "'Caveat', cursive", fontSize: "14px",
+              fontFamily: fonts.heading, fontSize: "14px",
               color: "#6a8dba", flexShrink: 0, width: "36px", paddingTop: "4px",
             }}>ask</label>
             <textarea
@@ -176,7 +201,7 @@ function TaskRow({ task, onStatusChange, onDelete, onUpdateQuestion, isQExpanded
                 flex: 1, padding: "5px 8px", borderRadius: "4px",
                 border: "1px solid rgba(106,141,186,0.2)",
                 background: "rgba(255,255,255,0.6)",
-                fontFamily: "'Karla', sans-serif", fontSize: "13px",
+                fontFamily: fonts.body, fontSize: "13px",
                 outline: "none", color: "#2c2c2c", resize: "vertical",
                 lineHeight: 1.5, boxSizing: "border-box",
               }}
@@ -189,7 +214,7 @@ function TaskRow({ task, onStatusChange, onDelete, onUpdateQuestion, isQExpanded
 }
 
 /* ─── done row ─── */
-function DoneRow({ task, onRestore, onDelete }) {
+function DoneRow({ task, fonts, onRestore, onDelete }) {
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: "10px",
@@ -202,12 +227,12 @@ function DoneRow({ task, onRestore, onDelete }) {
         justifyContent: "center", color: "#fff", flexShrink: 0,
       }}><IconCheck /></span>
       <span style={{
-        flex: 1, fontFamily: "'Karla', sans-serif", fontSize: "14px",
+        flex: 1, fontFamily: fonts.body, fontSize: "14px",
         color: "#999", textDecoration: "line-through",
         textDecorationColor: "rgba(0,0,0,0.15)",
       }}>{task.text}</span>
       <span style={{
-        fontFamily: "'Caveat', cursive", fontSize: "12px", color: "#bbb",
+        fontFamily: fonts.heading, fontSize: "12px", color: "#bbb",
       }}>{formatDate(task.created)}</span>
       <button onClick={() => onRestore(task.id)} title="Restore"
         style={{
@@ -228,8 +253,10 @@ export default function BulletJournal() {
   const [data, setData] = useState(null);
   const [input, setInput] = useState("");
   const [showDone, setShowDone] = useState(false);
-  const [expandedQ, setExpandedQ] = useState(new Set());
+  const [expandedQ, setExpandedQ] = useState(() => new Set());
   const [loading, setLoading] = useState(true);
+  const [selectedWeek, setSelectedWeek] = useState(currentWeekKey());
+  const [fontName, setFontName] = useState(null);
   const saveTimer = useRef(null);
   const inputRef = useRef(null);
 
@@ -238,10 +265,15 @@ export default function BulletJournal() {
     (async () => {
       try {
         const result = await window.storage.get(STORAGE_KEY);
-        setData(result ? JSON.parse(result.value) : defaultData());
+        const raw = result ? JSON.parse(result.value) : null;
+        setData(rollIncompletes(migrate(raw)));
       } catch {
         setData(defaultData());
       }
+      try {
+        const f = await loadFont();
+        if (f) { applyFont(f.blob); setFontName(f.name); }
+      } catch {}
       setLoading(false);
     })();
   }, []);
@@ -265,9 +297,13 @@ export default function BulletJournal() {
   const addTask = () => {
     const text = input.trim();
     if (!text) return;
+    const cur = currentWeekKey();
     update((d) => ({
       ...d,
-      tasks: [...d.tasks, { id: d.nextId, text, status: "active", created: Date.now() }],
+      tasks: [...d.tasks, {
+        id: d.nextId, text, status: "active",
+        created: Date.now(), week: cur, starred: false,
+      }],
       nextId: d.nextId + 1,
     }));
     setInput("");
@@ -277,19 +313,33 @@ export default function BulletJournal() {
   const changeStatus = (id, status) =>
     update((d) => ({
       ...d,
-      tasks: d.tasks.map((t) => (t.id === id ? { ...t, status } : t)),
+      tasks: d.tasks.map((t) => {
+        if (t.id !== id) return t;
+        const next = { ...t, status };
+        const cur = currentWeekKey();
+        if (status !== "done" && next.week < cur) next.week = cur;
+        return next;
+      }),
     }));
 
   const deleteTask = (id) =>
     update((d) => ({ ...d, tasks: d.tasks.filter((t) => t.id !== id) }));
 
-  const setNotes = (notes) => update((d) => ({ ...d, notes }));
+  const toggleStar = (id) =>
+    update((d) => ({
+      ...d,
+      tasks: d.tasks.map((t) => (t.id === id ? { ...t, starred: !t.starred } : t)),
+    }));
+
+  const setWeekNote = (key, notes) =>
+    update((d) => ({ ...d, weekNotes: { ...d.weekNotes, [key]: notes } }));
 
   const toggleSort = () =>
     update((d) => ({ ...d, sortOrder: d.sortOrder === "oldest" ? "newest" : "oldest" }));
 
-  const clearDone = () =>
-    update((d) => ({ ...d, tasks: d.tasks.filter((t) => t.status !== "done") }));
+  const setStarColor = (c) => update((d) => ({ ...d, starColor: c }));
+
+  const loadSamples = () => update((d) => rollIncompletes(withSampleWeeks(d)));
 
   const toggleQ = (id) =>
     setExpandedQ((prev) => {
@@ -304,6 +354,24 @@ export default function BulletJournal() {
       tasks: d.tasks.map((t) => (t.id === id ? { ...t, [field]: value } : t)),
     }));
 
+  const onFontFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const blob = new Blob([await file.arrayBuffer()]);
+      await saveFont(blob, file.name);
+      applyFont(blob);
+      setFontName(file.name);
+    } catch {}
+  };
+
+  const resetFont = async () => {
+    try { await clearFont(); } catch {}
+    removeFontStyle();
+    setFontName(null);
+  };
+
   if (loading || !data) {
     return (
       <div style={{ display: "flex", justifyContent: "center", padding: "80px 0",
@@ -313,64 +381,157 @@ export default function BulletJournal() {
     );
   }
 
-  const activeTasks = data.tasks
+  const fonts = {
+    heading: fontName ? "'BJCustom', cursive" : "'Caveat', cursive",
+    body: fontName ? "'BJCustom', sans-serif" : "'Karla', sans-serif",
+  };
+
+  const cur = currentWeekKey();
+  const isEverything = selectedWeek === "everything";
+  const isCurrent = selectedWeek === cur;
+  const canAdd = isCurrent || isEverything;
+
+  const weekSet = new Set(data.tasks.map((t) => t.week));
+  weekSet.add(cur);
+  const weeksDesc = [...weekSet].sort().reverse();
+
+  const inView = isEverything
+    ? data.tasks
+    : data.tasks.filter((t) => t.week === selectedWeek);
+
+  const activeTasks = inView
     .filter((t) => t.status === "active" || t.status === "hold")
-    .sort((a, b) =>
-      data.sortOrder === "oldest" ? a.created - b.created : b.created - a.created
-    );
-  const doneTasks = data.tasks.filter((t) => t.status === "done");
+    .sort((a, b) => {
+      if (!!a.starred !== !!b.starred) return a.starred ? -1 : 1;
+      return data.sortOrder === "oldest" ? a.created - b.created : b.created - a.created;
+    });
+  const doneTasks = inView.filter((t) => t.status === "done");
+
+  const clearDone = () =>
+    update((d) => ({
+      ...d,
+      tasks: d.tasks.filter((t) => {
+        if (t.status !== "done") return true;
+        return isEverything ? false : t.week !== selectedWeek;
+      }),
+    }));
+
+  const navBtn = (active) => ({
+    display: "block", width: "100%", textAlign: "left",
+    background: active ? "rgba(94,138,125,0.16)" : "transparent",
+    border: "none", cursor: "pointer", borderRadius: "5px",
+    padding: "6px 9px", marginBottom: "2px",
+    fontFamily: fonts.body, fontSize: "13px",
+    color: active ? "#3a5c52" : "#8a8275",
+    fontWeight: active ? 600 : 400,
+  });
+  const divider = { height: "1px", background: "rgba(0,0,0,0.07)", margin: "8px 4px" };
+  const linkBtn = {
+    display: "inline-block", background: "none", border: "none", cursor: "pointer",
+    padding: 0, fontFamily: fonts.heading, fontSize: "14px", color: "#6a8dba",
+    textAlign: "left",
+  };
+  const settingLabel = {
+    fontFamily: fonts.heading, fontSize: "14px", color: "#b0a898",
+    display: "block", marginBottom: "3px",
+  };
 
   return (
-    <>
-      <div style={{
-        maxWidth: "560px", margin: "0 auto", padding: "32px 20px 48px",
-        fontFamily: "'Karla', sans-serif",
-        minHeight: "100vh",
-        background: "linear-gradient(180deg, #faf8f4 0%, #f4f1eb 100%)",
-      }}>
-        {/* header */}
-        <div style={{ marginBottom: "28px" }}>
-          <h1 style={{
-            fontFamily: "'Caveat', cursive", fontSize: "36px", fontWeight: 600,
-            color: "#2c2c2c", margin: 0, lineHeight: 1.1,
-          }}>this week</h1>
-          <span style={{
-            fontFamily: "'Caveat', cursive", fontSize: "16px", color: "#b0a898",
-          }}>{weekRange()}</span>
+    <div className="bj-root">
+      {/* ─── sidebar ─── */}
+      <aside className="bj-sidebar">
+        <button style={navBtn(isEverything)} onClick={() => setSelectedWeek("everything")}>
+          ★ everything
+        </button>
+        <div style={divider} />
+        {weeksDesc.map((wk) => (
+          <button key={wk} style={navBtn(selectedWeek === wk)} onClick={() => setSelectedWeek(wk)}>
+            {wk === cur ? "this week" : weekLabel(wk)}
+          </button>
+        ))}
+        <div style={divider} />
+        <div style={{ padding: "2px 4px", display: "flex", flexDirection: "column", gap: "12px" }}>
+          <label>
+            <span style={settingLabel}>star colour</span>
+            <input type="color" value={data.starColor}
+              onChange={(e) => setStarColor(e.target.value)}
+              style={{ width: "100%", height: "26px", border: "none",
+                background: "none", cursor: "pointer", padding: 0 }} />
+          </label>
+          <div>
+            <span style={settingLabel}>journal font</span>
+            <label style={{ ...linkBtn, cursor: "pointer" }}>
+              {fontName ? "change font…" : "import .otf/.ttf…"}
+              <input type="file" accept=".otf,.ttf,font/otf,font/ttf"
+                onChange={onFontFile} style={{ display: "none" }} />
+            </label>
+            {fontName && (
+              <div style={{ fontFamily: fonts.body, fontSize: "11px", color: "#999", marginTop: "3px" }}>
+                {fontName}{" "}
+                <button onClick={resetFont}
+                  style={{ background: "none", border: "none", cursor: "pointer",
+                    padding: 0, color: "#d4a0a0", fontSize: "11px" }}>reset</button>
+              </div>
+            )}
+          </div>
+          {!data.sampleLoaded && (
+            <button onClick={loadSamples} style={{ ...linkBtn, color: "#6a8dba" }}>
+              + load sample weeks
+            </button>
+          )}
+        </div>
+      </aside>
+
+      {/* ─── main ─── */}
+      <main className="bj-main">
+        {/* header (one line) */}
+        <div style={{ marginBottom: "14px" }}>
+          {isEverything ? (
+            <h1 style={{ fontFamily: fonts.heading, fontSize: "26px", fontWeight: 600,
+              color: "#2c2c2c", margin: 0, lineHeight: 1.1 }}>everything</h1>
+          ) : (
+            <h1 style={{ fontFamily: fonts.heading, fontSize: "26px", fontWeight: 600,
+              color: "#2c2c2c", margin: 0, lineHeight: 1.1,
+              display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap" }}>
+              {isCurrent ? "this week" : weekLabel(selectedWeek)}
+              <span style={{ fontFamily: fonts.heading, fontSize: "15px",
+                color: "#b0a898", fontWeight: 400 }}>
+                {isCurrent ? weekLabel(selectedWeek) : "· past week"}
+              </span>
+            </h1>
+          )}
         </div>
 
         {/* add task */}
-        <div style={{
-          display: "flex", gap: "8px", marginBottom: "24px",
-        }}>
-          <input ref={inputRef} value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addTask()}
-            placeholder="add a task…"
-            style={{
-              flex: 1, padding: "10px 14px", borderRadius: "6px",
-              border: "1px solid rgba(0,0,0,0.1)",
-              background: "rgba(255,255,255,0.6)",
-              fontFamily: "'Karla', sans-serif", fontSize: "15px",
-              outline: "none", color: "#2c2c2c",
-            }}
-          />
-          <button onClick={addTask} style={{
-            width: "40px", height: "40px", borderRadius: "6px",
-            border: "none", background: "#5e8a7d", color: "#fff",
-            cursor: "pointer", display: "flex", alignItems: "center",
-            justifyContent: "center", flexShrink: 0,
-          }}><IconPlus /></button>
-        </div>
+        {canAdd && (
+          <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+            <input ref={inputRef} value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addTask()}
+              placeholder="add a task…"
+              style={{
+                flex: 1, padding: "9px 13px", borderRadius: "6px",
+                border: "1px solid rgba(0,0,0,0.1)",
+                background: "rgba(255,255,255,0.6)",
+                fontFamily: fonts.body, fontSize: "15px",
+                outline: "none", color: "#2c2c2c",
+              }}
+            />
+            <button onClick={addTask} style={{
+              width: "38px", height: "38px", borderRadius: "6px",
+              border: "none", background: "#5e8a7d", color: "#fff",
+              cursor: "pointer", display: "flex", alignItems: "center",
+              justifyContent: "center", flexShrink: 0,
+            }}><IconPlus /></button>
+          </div>
+        )}
 
         {/* sort control */}
         {activeTasks.length > 1 && (
-          <div style={{
-            display: "flex", justifyContent: "flex-end", marginBottom: "8px",
-          }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "6px" }}>
             <button onClick={toggleSort} style={{
               background: "none", border: "none", cursor: "pointer",
-              fontFamily: "'Caveat', cursive", fontSize: "13px",
+              fontFamily: fonts.heading, fontSize: "13px",
               color: "#b0a898", padding: "2px 0",
             }}>
               {data.sortOrder === "oldest" ? "↑ oldest first" : "↓ newest first"}
@@ -379,29 +540,29 @@ export default function BulletJournal() {
         )}
 
         {/* active tasks */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "28px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "16px" }}>
           {activeTasks.length === 0 && (
             <div style={{
-              textAlign: "center", padding: "32px 0",
-              fontFamily: "'Caveat', cursive", fontSize: "18px", color: "#ccc",
+              textAlign: "center", padding: "28px 0",
+              fontFamily: fonts.heading, fontSize: "18px", color: "#ccc",
             }}>
-              nothing here yet — add a task above
+              {canAdd ? "nothing here yet — add a task above" : "no open tasks this week"}
             </div>
           )}
           {activeTasks.map((t) => (
-            <TaskRow key={t.id} task={t} onStatusChange={changeStatus} onDelete={deleteTask}
-              onUpdateQuestion={updateQuestion}
-              isQExpanded={expandedQ.has(t.id)}
-              onToggleQ={toggleQ}/>
+            <TaskRow key={t.id} task={t} fonts={fonts} starColor={data.starColor}
+              onStatusChange={changeStatus} onDelete={deleteTask}
+              onToggleStar={toggleStar} onUpdateQuestion={updateQuestion}
+              isQExpanded={expandedQ.has(t.id)} onToggleQ={toggleQ}/>
           ))}
         </div>
 
         {/* done section */}
         {doneTasks.length > 0 && (
-          <div style={{ marginBottom: "28px" }}>
+          <div style={{ marginBottom: "16px" }}>
             <button onClick={() => setShowDone(!showDone)} style={{
               background: "none", border: "none", cursor: "pointer",
-              fontFamily: "'Caveat', cursive", fontSize: "16px",
+              fontFamily: fonts.heading, fontSize: "16px",
               color: "#b0a898", padding: "0 0 8px 0",
               display: "flex", alignItems: "center", gap: "6px",
             }}>
@@ -414,7 +575,7 @@ export default function BulletJournal() {
               {!showDone && (
                 <span onClick={(e) => { e.stopPropagation(); clearDone(); }}
                   style={{ fontSize: "12px", marginLeft: "8px", color: "#d4a0a0" }}
-                  title="Clear all done">
+                  title="Clear done in this view">
                   clear
                 </span>
               )}
@@ -422,47 +583,47 @@ export default function BulletJournal() {
             {showDone && (
               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                 {doneTasks.map((t) => (
-                  <DoneRow key={t.id} task={t}
+                  <DoneRow key={t.id} task={t} fonts={fonts}
                     onRestore={(id) => changeStatus(id, "active")}
                     onDelete={deleteTask}/>
                 ))}
                 <button onClick={clearDone} style={{
                   background: "none", border: "none", cursor: "pointer",
-                  fontFamily: "'Caveat', cursive", fontSize: "13px",
+                  fontFamily: fonts.heading, fontSize: "13px",
                   color: "#d4a0a0", padding: "8px 0 0", textAlign: "left",
-                }}>clear all done</button>
+                }}>clear done in this view</button>
               </div>
             )}
           </div>
         )}
 
-        {/* divider */}
-        <div style={{
-          borderTop: "1px dashed rgba(0,0,0,0.1)", margin: "0 0 20px",
-        }} />
-
-        {/* notes */}
-        <div>
-          <label style={{
-            fontFamily: "'Caveat', cursive", fontSize: "18px",
-            color: "#b0a898", display: "block", marginBottom: "8px",
-          }}>notes</label>
-          <textarea
-            value={data.notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="jot anything down…"
-            rows={5}
-            style={{
-              width: "100%", padding: "12px 14px", borderRadius: "6px",
-              border: "1px solid rgba(0,0,0,0.08)",
-              background: "rgba(255,255,255,0.5)",
-              fontFamily: "'Karla', sans-serif", fontSize: "14px",
-              color: "#2c2c2c", outline: "none", resize: "vertical",
-              lineHeight: 1.6, boxSizing: "border-box",
-            }}
-          />
-        </div>
-      </div>
-    </>
+        {/* notes (per week) */}
+        {!isEverything && (
+          <>
+            <div style={{ borderTop: "1px dashed rgba(0,0,0,0.1)", margin: "0 0 12px" }} />
+            <div>
+              <label style={{
+                fontFamily: fonts.heading, fontSize: "18px",
+                color: "#b0a898", display: "block", marginBottom: "6px",
+              }}>notes</label>
+              <textarea
+                value={data.weekNotes[selectedWeek] || ""}
+                onChange={(e) => setWeekNote(selectedWeek, e.target.value)}
+                placeholder="jot anything down…"
+                rows={5}
+                style={{
+                  width: "100%", padding: "11px 13px", borderRadius: "6px",
+                  border: "1px solid rgba(0,0,0,0.08)",
+                  background: "rgba(255,255,255,0.5)",
+                  fontFamily: fonts.body, fontSize: "14px",
+                  color: "#2c2c2c", outline: "none", resize: "vertical",
+                  lineHeight: 1.6, boxSizing: "border-box",
+                }}
+              />
+            </div>
+          </>
+        )}
+      </main>
+    </div>
   );
 }
