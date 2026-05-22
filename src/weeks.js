@@ -47,7 +47,7 @@ export function weekParts(key) {
 export const DENSITIES = [
   { id: "cozy",    taskGap: 4,  padY: 4,  padX: 4,  btnPad: 2, taskFont: 16 },
   { id: "comfy",   taskGap: 7,  padY: 8,  padX: 11, btnPad: 4, taskFont: 19 },
-  { id: "compact", taskGap: 11, padY: 13, padX: 17, btnPad: 6, taskFont: 22 },
+  { id: "fluffy", taskGap: 11, padY: 13, padX: 17, btnPad: 6, taskFont: 22 },
 ];
 
 export function getDensity(id) {
