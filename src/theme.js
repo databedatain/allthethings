@@ -76,7 +76,8 @@ export const THEME_DEFAULTS = {
   highlight: "#5fba77",
   star: "#EFB900",
   hold: "#a6afbb",
-  bg: null,
+  bgLight: null,
+  bgDark: null,
 };
 
 function hexToRgb(hex) {
@@ -116,8 +117,13 @@ export function bgShades(hex, dark) {
     : [lighten(hex, 0.86), lighten(hex, 0.92), lighten(hex, 0.97)];
 }
 
+// a coherent light/dark background pair derived from a preset's highlight
+export function presetBg(highlight) {
+  return { light: lighten(highlight, 0.91), dark: darken(highlight, 0.87) };
+}
+
 export function buildTheme(cfg) {
-  const { mode, highlight, star, hold, bg } = { ...THEME_DEFAULTS, ...cfg };
+  const { mode, highlight, star, hold, bgLight, bgDark } = { ...THEME_DEFAULTS, ...cfg };
   const dark = mode === "dark";
   const defaultBg = dark
     ? "linear-gradient(180deg, #24262b 0%, #1b1c20 100%)"
@@ -125,7 +131,7 @@ export function buildTheme(cfg) {
   return {
     mode,
     dark,
-    bg: bg || defaultBg,
+    bg: (dark ? bgDark : bgLight) || defaultBg,
     surface: dark ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.55)",
     surfaceAlt: dark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.4)",
     panel: dark ? "rgba(255,255,255,0.045)" : "rgba(255,255,255,0.6)",

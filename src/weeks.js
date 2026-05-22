@@ -56,7 +56,7 @@ export function getDensity(id) {
 
 export function defaultData() {
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     tasks: [],
     trash: [],
     weekNotes: {},
@@ -146,6 +146,13 @@ export function migrate(data) {
       taskFont: d.spacing?.taskFont ?? 16,
     };
     delete d.spacing;
+  }
+
+  if (d.schemaVersion < 8) {
+    const th = { ...(d.theme || {}) };
+    const bgLight = th.bg ?? null;
+    delete th.bg;
+    d = { ...d, schemaVersion: 8, theme: { ...th, bgLight, bgDark: null } };
   }
 
   return d;
