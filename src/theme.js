@@ -47,14 +47,28 @@ export function getPalette(id) {
   return PALETTES.find((p) => p.id === id) || PALETTES[0];
 }
 
-// theme presets — each belongs to a palette; sets the three base colours
+// theme presets — each belongs to a palette; sets the three base colours.
+// Four per palette; the first of each palette is its default preset.
 export const PRESETS = [
   { id: "harbor", name: "Harbor", palette: "default", highlight: "#5C8BC3", star: "#6CC6CB", hold: "#a6afbb" },
   { id: "anchor", name: "Anchor", palette: "default", highlight: "#5fba77", star: "#EFB900", hold: "#a6afbb" },
   { id: "ink",    name: "Ink",    palette: "default", highlight: "#1e4a71", star: "#EFB900", hold: "#465058" },
-  { id: "twilight", name: "Twilight", palette: "dusk",  highlight: "#6b5b95", star: "#c08497", hold: "#8d99ae" },
-  { id: "hearth",   name: "Hearth",   palette: "ember", highlight: "#9c4a2f", star: "#d98e04", hold: "#a89b8c" },
-  { id: "posy",     name: "Posy",     palette: "bloom", highlight: "#ef6f6c", star: "#f4c145", hold: "#8896d8" },
+  { id: "amber",  name: "Amber",  palette: "default", highlight: "#E89D56", star: "#EFB900", hold: "#a6afbb" },
+
+  { id: "twilight", name: "Twilight", palette: "dusk", highlight: "#6b5b95", star: "#c08497", hold: "#8d99ae" },
+  { id: "midnight", name: "Midnight", palette: "dusk", highlight: "#2e3a59", star: "#c08497", hold: "#5d7b8a" },
+  { id: "heather",  name: "Heather",  palette: "dusk", highlight: "#88649e", star: "#b5838d", hold: "#9d8aa8" },
+  { id: "tide",     name: "Tide",     palette: "dusk", highlight: "#4a7c8c", star: "#c08497", hold: "#8d99ae" },
+
+  { id: "hearth", name: "Hearth", palette: "ember", highlight: "#9c4a2f", star: "#d98e04", hold: "#a89b8c" },
+  { id: "clay",   name: "Clay",   palette: "ember", highlight: "#c96e3f", star: "#e3b23c", hold: "#a89b8c" },
+  { id: "olive",  name: "Olive",  palette: "ember", highlight: "#7d7c3a", star: "#d98e04", hold: "#d2a679" },
+  { id: "brick",  name: "Brick",  palette: "ember", highlight: "#a13d2d", star: "#e3b23c", hold: "#b5654a" },
+
+  { id: "posy",   name: "Posy",   palette: "bloom", highlight: "#ef6f6c", star: "#f4c145", hold: "#8896d8" },
+  { id: "meadow", name: "Meadow", palette: "bloom", highlight: "#5fbf9f", star: "#9cc457", hold: "#8896d8" },
+  { id: "sky",    name: "Sky",    palette: "bloom", highlight: "#56a3d9", star: "#5fc7c7", hold: "#8896d8" },
+  { id: "lilac",  name: "Lilac",  palette: "bloom", highlight: "#9d8ec9", star: "#e08aa6", hold: "#8896d8" },
 ];
 
 export const THEME_DEFAULTS = {
