@@ -16,6 +16,9 @@ import {
   clearFont,
   applyFont,
   removeFontStyle,
+  FONTS,
+  fontStack,
+  loadCatalogFonts,
 } from "./font.js";
 import { buildTheme, rgba, presetBg, PRESETS, PALETTES, getPalette } from "./theme.js";
 import ColorPicker from "./color-picker.jsx";
@@ -345,6 +348,49 @@ function PaletteSelect({ t, fonts, value, onChange }) {
   );
 }
 
+/* ─── font dropdown (previews each option in its own typeface) ─── */
+function FontSelect({ value, onChange, hasCustom, t }) {
+  const [open, setOpen] = useState(false);
+  const opts = FONTS.map((f) => ({ id: f.id, label: f.label, stack: f.stack }));
+  if (hasCustom) opts.push({ id: "custom", label: "Custom", stack: "'BJCustom', sans-serif" });
+  const current = opts.find((o) => o.id === value) || opts[0];
+  return (
+    <span style={{ position: "relative", display: "inline-block" }}>
+      <button onClick={() => setOpen((o) => !o)} style={{
+        width: "120px", textAlign: "left", cursor: "pointer",
+        border: `1px solid ${t.border}`, background: t.surface,
+        borderRadius: "5px", padding: "4px 8px",
+        fontFamily: current.stack, fontSize: "14px", color: t.text,
+        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+      }}>{current.label}</button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+          <div style={{
+            position: "absolute", top: "30px", right: 0, zIndex: 41,
+            background: t.popover, border: `1px solid ${t.border}`,
+            borderRadius: 6, padding: 4, minWidth: "150px",
+            maxHeight: "264px", overflowY: "auto",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
+          }}>
+            {opts.map((o) => (
+              <button key={o.id} onClick={() => { onChange(o.id); setOpen(false); }}
+                style={{
+                  display: "block", width: "100%", textAlign: "left", cursor: "pointer",
+                  border: "none", borderRadius: 4, padding: "5px 8px",
+                  background: o.id === value ? t.accentSoft : "transparent",
+                  fontFamily: o.stack, fontSize: "15px",
+                  color: o.id === value ? t.accentText2 : t.text,
+                }}>{o.label}</button>
+            ))}
+          </div>
+        </>
+      )}
+    </span>
+  );
+}
+
 /* ─── collapsible section header ─── */
 function SectionToggle({ t, fonts, open, onToggle, label, extra }) {
   return (
@@ -388,6 +434,7 @@ export default function BulletJournal() {
 
   // load
   useEffect(() => {
+    loadCatalogFonts();
     (async () => {
       try {
         const result = await window.storage.get(STORAGE_KEY);
@@ -601,6 +648,9 @@ export default function BulletJournal() {
 
   const setTaskFont = (value) => update((d) => ({ ...d, taskFont: value }));
 
+  const setHeadingFont = (id) => update((d) => ({ ...d, headingFont: id }));
+  const setBodyFont = (id) => update((d) => ({ ...d, bodyFont: id }));
+
   const loadSamples = () => update((d) => rollIncompletes(withSampleWeeks(d)));
 
   const toggleQ = (id) =>
@@ -666,8 +716,8 @@ export default function BulletJournal() {
     date: px(16),
   };
   const fonts = {
-    heading: fontName ? "'BJCustom', cursive" : "'Caveat', cursive",
-    body: fontName ? "'BJCustom', sans-serif" : "'Karla', sans-serif",
+    heading: fontStack(data.headingFont, !!fontName),
+    body: fontStack(data.bodyFont, !!fontName),
   };
 
   const cur = currentWeekKey();
@@ -895,35 +945,28 @@ export default function BulletJournal() {
             <div>
               <div style={{ ...settingRow, marginBottom: "4px" }}>theme</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
-                {PRESETS.filter((p) => p.palette === data.palette).map((p) => {
-                  const pb = presetBg(p.highlight);
-                  return (
-                    <button key={p.id} onClick={() => applyPreset(p)} title={p.name}
-                      style={{
-                        width: "96px", display: "flex", alignItems: "center",
-                        justifyContent: "flex-start", gap: "6px",
-                        cursor: "pointer", borderRadius: "5px",
-                        border: `1px solid ${t.border}`, background: t.surface,
-                        padding: "4px 8px", fontFamily: fonts.body,
-                        fontSize: "12px", color: t.textMuted,
-                      }}>
-                      <span style={{ display: "flex", gap: "3px" }}>
-                        {[p.highlight, p.star, p.hold].map((c, i) => (
-                          <span key={i} style={{
-                            width: "9px", height: "9px", borderRadius: "50%",
-                            background: c, display: "inline-block",
-                          }} />
-                        ))}
-                        <span title="light / dark background" style={{
+                {PRESETS.filter((p) => p.palette === data.palette).map((p) => (
+                  <button key={p.id} onClick={() => applyPreset(p)} title={p.name}
+                    style={{
+                      width: "96px", display: "flex", alignItems: "center",
+                      justifyContent: "flex-start", gap: "6px",
+                      cursor: "pointer", borderRadius: "5px",
+                      border: `1px solid ${t.border}`, background: t.surface,
+                      padding: "4px 8px", fontFamily: fonts.body,
+                      fontSize: "12px", color: t.textMuted,
+                    }}>
+                    <span style={{ display: "flex", gap: "3px", flexShrink: 0 }}>
+                      {[p.highlight, p.star, p.hold].map((c, i) => (
+                        <span key={i} style={{
                           width: "9px", height: "9px", borderRadius: "50%",
-                          display: "inline-block", border: `1px solid ${t.border}`,
-                          background: `linear-gradient(90deg, ${pb.light} 0 50%, ${pb.dark} 50% 100%)`,
+                          background: c, display: "inline-block", flexShrink: 0,
                         }} />
-                      </span>
-                      {p.name}
-                    </button>
-                  );
-                })}
+                      ))}
+                    </span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis",
+                      whiteSpace: "nowrap" }}>{p.name}</span>
+                  </button>
+                ))}
               </div>
             </div>
             {/* colour pickers */}
@@ -964,14 +1007,26 @@ export default function BulletJournal() {
                 ))}
               </div>
             </div>
-            {/* font */}
+            {/* fonts */}
             <div>
-              <div style={{ ...settingRow, marginBottom: "4px" }}>
-                <span>font</span>
+              <div style={{ ...settingRow, marginBottom: "5px" }}>fonts</div>
+              <div style={{ ...settingRow, marginBottom: "5px" }}>
+                <span>headings</span>
+                <FontSelect value={data.headingFont} onChange={setHeadingFont}
+                  hasCustom={!!fontName} t={t} />
+              </div>
+              <div style={{ ...settingRow, marginBottom: "5px" }}>
+                <span>body</span>
+                <FontSelect value={data.bodyFont} onChange={setBodyFont}
+                  hasCustom={!!fontName} t={t} />
+              </div>
+              <div style={{ ...settingRow, marginBottom: "5px" }}>
+                <span>custom file</span>
                 <label style={{ ...linkBtn, cursor: "pointer", display: "flex",
                   alignItems: "center", gap: "4px" }}>
-                  <span style={{ color: t.textMuted, fontSize: "13px" }}>
-                    {fontName || "default"}
+                  <span style={{ color: t.textMuted, fontSize: "13px", maxWidth: "84px",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {fontName || "import…"}
                   </span>
                   ✎
                   <input type="file" accept=".otf,.ttf,font/otf,font/ttf"
@@ -980,8 +1035,8 @@ export default function BulletJournal() {
               </div>
               {fontName && (
                 <button onClick={resetFont}
-                  style={{ ...linkBtn, color: t.danger, marginBottom: "4px" }}>
-                  reset font to default
+                  style={{ ...linkBtn, color: t.danger, marginBottom: "5px" }}>
+                  remove custom font
                 </button>
               )}
               <div style={{ ...settingRow, gap: "8px" }}>
