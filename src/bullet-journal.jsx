@@ -363,7 +363,7 @@ function DoneRow({ task, t, fonts, ui, confirmKey, onRestore, onDelete }) {
         textDecorationColor: t.textFaint,
       }}>{task.text}</span>
       <span style={{
-        fontFamily: fonts.heading, fontSize: `${Math.round(ui.date * 0.94)}px`, color: t.textFaint,
+        fontFamily: fonts.body, fontSize: `${Math.round(ui.date * 0.94)}px`, color: t.textFaint,
       }}>{formatDate(task.created)}</span>
       <button onClick={() => onDelete(task.id)}
         title={confirmKey === `del:${task.id}` ? "Click again to remove" : "Move to trash"}
