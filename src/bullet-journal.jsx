@@ -1247,7 +1247,7 @@ export default function BulletJournal() {
                 onClick={() => setThemeKey("mode", t.dark ? "light" : "dark")}
                 title={t.dark ? "Switch to light mode" : "Switch to dark mode"}
                 style={{
-                  width: 20, height: 20, flexShrink: 0,
+                  width: size, height: size, flexShrink: 0,
                   cursor: "pointer", padding: 0,
                   border: `1px solid ${t.border}`, background: t.surface,
                   borderRadius: 4,
