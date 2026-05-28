@@ -1264,16 +1264,17 @@ export default function BulletJournal() {
                   onChange={selectPalette} />
               </div>
             </div>
-            {/* theme presets for the active palette */}
+            {/* theme — presets set highlight/star/hold; the fine-tune pickers
+                below override the active preset's individual colours */}
             <div>
-              <div style={{ ...settingRow, marginBottom: "4px" }}>theme</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px" }}>
+              <div style={{ ...settingRow, marginBottom: SP.xs }}>theme</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: SP.xs }}>
                 {PRESETS.filter((p) => p.palette === data.palette).map((p) => (
                   <button key={p.id} onClick={() => applyPreset(p)} title={p.name}
                     style={{
                       display: "flex", alignItems: "center",
                       justifyContent: "flex-start", gap: "5px",
-                      cursor: "pointer", borderRadius: "5px",
+                      cursor: "pointer", borderRadius: CONTROL.radiusSm,
                       border: `1px solid ${t.border}`, background: t.surface,
                       padding: "4px 6px", fontFamily: fonts.body,
                       fontSize: TYPE.caption, color: t.textMuted,
@@ -1291,35 +1292,44 @@ export default function BulletJournal() {
                   </button>
                 ))}
               </div>
-            </div>
-            {/* colour pickers in a 2x2 grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
-              columnGap: "10px", rowGap: "8px" }}>
-              <div style={settingRow}>
-                <span>highlight</span>
-                <ColorPicker value={data.theme.highlight} t={t} colors={paletteColors}
-                  align="left" size={16}
-                  onChange={(c) => c && setThemeKey("highlight", c)} />
-              </div>
-              <div style={settingRow}>
-                <span>star</span>
-                <ColorPicker value={data.theme.star} t={t} colors={paletteColors}
-                  align="left" size={16}
-                  onChange={(c) => c && setThemeKey("star", c)} />
-              </div>
-              <div style={settingRow}>
-                <span>hold</span>
-                <ColorPicker value={data.theme.hold} t={t} colors={paletteColors}
-                  align="left" size={16}
-                  onChange={(c) => c && setThemeKey("hold", c)} />
-              </div>
-              <div style={settingRow}>
-                <span>background</span>
-                <ColorPicker
-                  value={(t.dark ? data.theme.bgDark : data.theme.bgLight) || null}
-                  t={t} colors={paletteColors} allowNone variant="bg"
-                  align="left" size={16}
-                  onChange={(c) => setThemeKey(t.dark ? "bgDark" : "bgLight", c)} />
+              {/* fine-tune: indented + accent rule signals these belong to the
+                  active preset and override its individual colours */}
+              <div style={{
+                marginTop: SP.sm, paddingTop: SP.sm, paddingLeft: SP.sm,
+                borderTop: `1px solid ${t.divider}`,
+                borderLeft: `2px solid ${t.accentBorder}`,
+                display: "flex", flexDirection: "column", gap: SP.sm,
+              }}>
+                <div style={{ ...settingRow, color: t.textFaint }}>fine-tune</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
+                  columnGap: SP.md, rowGap: SP.sm }}>
+                  <div style={settingRow}>
+                    <span>highlight</span>
+                    <ColorPicker value={data.theme.highlight} t={t} colors={paletteColors}
+                      align="left" size={16}
+                      onChange={(c) => c && setThemeKey("highlight", c)} />
+                  </div>
+                  <div style={settingRow}>
+                    <span>star</span>
+                    <ColorPicker value={data.theme.star} t={t} colors={paletteColors}
+                      align="left" size={16}
+                      onChange={(c) => c && setThemeKey("star", c)} />
+                  </div>
+                  <div style={settingRow}>
+                    <span>hold</span>
+                    <ColorPicker value={data.theme.hold} t={t} colors={paletteColors}
+                      align="left" size={16}
+                      onChange={(c) => c && setThemeKey("hold", c)} />
+                  </div>
+                  <div style={settingRow}>
+                    <span>background</span>
+                    <ColorPicker
+                      value={(t.dark ? data.theme.bgDark : data.theme.bgLight) || null}
+                      t={t} colors={paletteColors} allowNone variant="bg"
+                      align="left" size={16}
+                      onChange={(c) => setThemeKey(t.dark ? "bgDark" : "bgLight", c)} />
+                  </div>
+                </div>
               </div>
             </div>
             {/* tags */}
