@@ -447,6 +447,170 @@ function FontSelect({ value, onChange, hasCustom, t }) {
   );
 }
 
+/* ─── add-task row (looks like a task row, with a + commit and inline controls) ─── */
+function AddTaskRow({ t, fonts, colors, tags, ui, draft, onChange, onCommit, onCreateTag, inputRef }) {
+  const isHold = draft.status === "hold";
+  const isStar = !!draft.starred;
+  const hasQ = draft.questionWho || draft.questionText;
+  const tagOnDraft = tags?.find((tg) => tg.color === draft.color && tg.name?.trim());
+
+  const tint = draft.color
+    ? rgba(draft.color, t.dark ? 0.22 : 0.16)
+    : isHold ? t.holdTint : t.surface;
+  const border = draft.color
+    ? `1px solid ${rgba(draft.color, 0.5)}`
+    : isHold ? `1px dashed ${t.holdBorder}`
+    : `1px dashed ${t.border}`;
+  const starOutline = isStar ? `inset 0 0 0 2px ${t.star}` : undefined;
+
+  const iconBtn = {
+    background: "none", border: "none", cursor: "pointer",
+    padding: `${ui.btnPad}px`, display: "flex", alignItems: "center",
+  };
+  const pillFont = `${Math.max(10, ui.taskFont - 5)}px`;
+  const pillPad = "1px 8px";
+  const pillRadius = "9px";
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: "4px",
+        padding: `${ui.padY}px ${ui.padX}px`,
+        borderRadius: hasQ && draft.showQ ? "6px 6px 0 0" : "6px",
+        background: tint, border,
+        boxShadow: starOutline,
+        borderBottom: hasQ && draft.showQ ? "none" : undefined,
+      }}>
+        {/* + commit */}
+        <button onClick={onCommit} title="Add task"
+          style={{
+            width: ui.checkbox, height: ui.checkbox, borderRadius: 4, cursor: "pointer",
+            border: "none", background: t.accent, color: t.accentText,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0, padding: 0,
+          }}>
+          <IconPlus size={ui.doneCheck} />
+        </button>
+
+        {/* text input */}
+        <input ref={inputRef} value={draft.text}
+          onChange={(e) => onChange({ text: e.target.value })}
+          onKeyDown={(e) => { if (e.key === "Enter") onCommit(); }}
+          placeholder="add a task…"
+          style={{
+            flex: 1, fontFamily: fonts.body, fontSize: `${ui.taskFont}px`,
+            background: "transparent", border: "none", outline: "none",
+            color: isHold ? t.holdText : t.text,
+            fontStyle: isHold ? "italic" : "normal",
+            marginLeft: "4px", padding: "2px 5px",
+          }}
+        />
+
+        {/* tag pill */}
+        <ColorPicker
+          value={draft.color || null} t={t} colors={colors} allowNone
+          tags={tags} onCreateTag={onCreateTag}
+          onChange={(c) => onChange({ color: c })}
+          renderTrigger={(toggle) => {
+            if (tagOnDraft) return (
+              <button onClick={toggle} title={`Tag: ${tagOnDraft.name}`}
+                style={{
+                  fontFamily: fonts.body, fontSize: pillFont, padding: pillPad, borderRadius: pillRadius,
+                  background: rgba(tagOnDraft.color, t.dark ? 0.28 : 0.18),
+                  color: t.text,
+                  border: `1px solid ${rgba(tagOnDraft.color, 0.55)}`,
+                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                }}>{tagOnDraft.name}</button>
+            );
+            if (draft.color) return (
+              <button onClick={toggle} title="Tag colour (click to rename)"
+                style={{
+                  fontFamily: fonts.body, fontSize: pillFont, padding: pillPad, borderRadius: pillRadius,
+                  background: rgba(draft.color, t.dark ? 0.28 : 0.18),
+                  color: t.textMuted,
+                  border: `1px solid ${rgba(draft.color, 0.55)}`,
+                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                }}>—</button>
+            );
+            return (
+              <button onClick={toggle} title="Add tag"
+                style={{
+                  fontFamily: fonts.body, fontSize: pillFont, padding: pillPad, borderRadius: pillRadius,
+                  background: "transparent", color: t.textFaint,
+                  border: `1px dashed ${t.border}`,
+                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                }}>tag</button>
+            );
+          }}
+        />
+
+        {/* star */}
+        <button onClick={() => onChange({ starred: !isStar })}
+          title={isStar ? "Unstar" : "Star"}
+          style={{ ...iconBtn, color: isStar ? t.star : t.textFaint }}>
+          <IconStar filled={isStar} size={ui.star} />
+        </button>
+
+        {/* question */}
+        <button onClick={() => onChange({ showQ: !draft.showQ })}
+          title={draft.showQ ? "Hide question" : "Add question"}
+          style={{ ...iconBtn, color: hasQ ? t.question : t.textFaint }}>
+          <IconQuestion size={ui.icon} />
+        </button>
+
+        {/* hold */}
+        <button onClick={() => onChange({ status: isHold ? "active" : "hold" })}
+          title={isHold ? "Resume" : "Put on hold"}
+          style={{ ...iconBtn, color: isHold ? t.holdText : t.textFaint }}>
+          {isHold ? <IconUndo size={ui.icon} /> : <IconPause size={ui.icon} />}
+        </button>
+      </div>
+
+      {draft.showQ && (
+        <div style={{
+          padding: "9px 12px 11px", borderRadius: "0 0 6px 6px",
+          background: t.accentSoft,
+          border: `1px solid ${t.border}`, borderTop: "none",
+          display: "flex", flexDirection: "column", gap: "7px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <label style={{
+              fontFamily: fonts.heading, fontSize: "16px",
+              color: t.question, flexShrink: 0, width: "40px",
+            }}>who</label>
+            <input value={draft.questionWho}
+              onChange={(e) => onChange({ questionWho: e.target.value })}
+              placeholder="person or team…"
+              style={{
+                flex: 1, padding: "6px 9px", borderRadius: "4px",
+                border: `1px solid ${t.border}`, background: t.surface,
+                fontFamily: fonts.body, fontSize: "15px",
+                outline: "none", color: t.text,
+              }}/>
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <label style={{
+              fontFamily: fonts.heading, fontSize: "16px",
+              color: t.question, flexShrink: 0, width: "40px", paddingTop: "4px",
+            }}>ask</label>
+            <textarea value={draft.questionText}
+              onChange={(e) => onChange({ questionText: e.target.value })}
+              placeholder="what do you need to find out…"
+              rows={2}
+              style={{
+                flex: 1, padding: "6px 9px", borderRadius: "4px",
+                border: `1px solid ${t.border}`, background: t.surface,
+                fontFamily: fonts.body, fontSize: "15px",
+                outline: "none", color: t.text, resize: "vertical",
+                lineHeight: 1.5, boxSizing: "border-box",
+              }}/>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── collapsible section header ─── */
 function SectionToggle({ t, fonts, open, onToggle, label, extra }) {
   return (
@@ -470,7 +634,10 @@ function SectionToggle({ t, fonts, open, onToggle, label, extra }) {
 /* ─── main ─── */
 export default function BulletJournal() {
   const [data, setData] = useState(null);
-  const [input, setInput] = useState("");
+  const [draft, setDraft] = useState({
+    text: "", color: null, starred: false, status: "active",
+    questionWho: "", questionText: "", showQ: false,
+  });
   const [query, setQuery] = useState("");
   const [doneOpen, setDoneOpen] = useState(() => new Map());
   const [showHold, setShowHold] = useState(true);
@@ -575,22 +742,28 @@ export default function BulletJournal() {
     document.body.style.background = theme.bg;
   }, [theme.bg]);
 
-  const addTask = () => {
-    const text = input.trim();
+  const updateDraft = (patch) => setDraft((d) => ({ ...d, ...patch }));
+  const commitDraft = () => {
+    const text = draft.text.trim();
     if (!text) return;
     const cur = currentWeekKey();
+    const { color, starred, status, questionWho, questionText } = draft;
     update((d) => {
       const maxOrder = d.tasks.reduce((m, x) => Math.max(m, x.order ?? 0), 0);
       return {
         ...d,
         tasks: [...d.tasks, {
-          id: d.nextId, text, status: "active", created: Date.now(),
-          week: cur, starred: false, color: null, order: maxOrder + 1,
+          id: d.nextId, text, status, created: Date.now(),
+          week: cur, starred, color,
+          ...(questionWho ? { questionWho } : {}),
+          ...(questionText ? { questionText } : {}),
+          order: maxOrder + 1,
         }],
         nextId: d.nextId + 1,
       };
     });
-    setInput("");
+    setDraft({ text: "", color: null, starred: false, status: "active",
+      questionWho: "", questionText: "", showQ: false });
     inputRef.current?.focus();
   };
 
@@ -938,25 +1111,17 @@ export default function BulletJournal() {
     fontWeight: active ? 600 : 400,
   });
 
-  const addBox = canAdd && (
-    <div style={{ display: "flex", gap: "6px" }}>
-      <input ref={inputRef} value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && addTask()}
-        placeholder="add a task…"
-        style={{
-          width: "224px", height: "38px", padding: "0 12px", borderRadius: "6px",
-          border: `1px solid ${t.border}`, background: t.surface,
-          fontFamily: fonts.body, fontSize: "15px",
-          outline: "none", color: t.text, boxSizing: "border-box",
-        }}
-      />
-      <button onClick={addTask} style={{
-        width: "38px", height: "38px", borderRadius: "6px",
-        border: "none", background: t.accent, color: t.accentText,
-        cursor: "pointer", display: "flex", alignItems: "center",
-        justifyContent: "center", flexShrink: 0,
-      }}><IconPlus /></button>
+  const sortBar = (activeTasks.length + holdTasks.length) > 1 && (
+    <div style={{ display: "flex", gap: "10px", alignItems: "baseline" }}>
+      <button onClick={() => setSortMode("custom")}
+        style={sortBtn(data.sortMode === "custom")}>
+        ⠿ custom
+      </button>
+      <button onClick={clickDateSort}
+        title="Sort by date — click again to flip"
+        style={sortBtn(data.sortMode === "date")}>
+        {data.sortOrder === "oldest" ? "↑ oldest first" : "↓ newest first"}
+      </button>
     </div>
   );
 
@@ -1115,17 +1280,25 @@ export default function BulletJournal() {
                     value={tag.name}
                     onChange={(e) => setTagName(tag.color, e.target.value)}
                     placeholder="name…"
+                    maxLength={25}
                     style={{
                       flex: 1, minWidth: 0, padding: "3px 7px", borderRadius: 4,
                       border: `1px solid ${t.border}`, background: t.surface,
                       fontFamily: fonts.body, fontSize: 13, color: t.text, outline: "none",
                     }}
                   />
-                  <button onClick={() => removeTag(tag.color)} title="Remove tag"
+                  <button
+                    onClick={() => armOrRun(`tag:${tag.color}`, () => removeTag(tag.color))}
+                    title={confirmKey === `tag:${tag.color}` ? "Click again to remove" : "Remove tag"}
                     style={{
                       background: "none", border: "none", cursor: "pointer",
-                      padding: 0, color: t.danger, fontSize: 13,
-                    }}>✕</button>
+                      padding: 0, color: t.danger,
+                      fontFamily: fonts.body,
+                      fontSize: confirmKey === `tag:${tag.color}` ? 11 : 13,
+                      fontWeight: confirmKey === `tag:${tag.color}` ? 700 : 400,
+                    }}>
+                    {confirmKey === `tag:${tag.color}` ? "sure?" : "✕"}
+                  </button>
                 </div>
               ))}
               {(data.tags || []).length < MAX_TAGS && (
@@ -1334,42 +1507,29 @@ export default function BulletJournal() {
                   </span>
                 </h1>
               )}
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 {undoBtn("Undo", undo)}
                 {undoBtn("Redo", redo)}
-                {addBox}
+                {sortBar}
               </div>
             </div>
-
-            {/* sort control */}
-            {(activeTasks.length + holdTasks.length) > 1 && (
-              <div style={{ display: "flex", justifyContent: "flex-end",
-                gap: "14px", marginBottom: "7px" }}>
-                <button onClick={() => setSortMode("custom")}
-                  style={sortBtn(data.sortMode === "custom")}>
-                  ⠿ custom
-                </button>
-                <button onClick={clickDateSort}
-                  title="Sort by date — click again to flip"
-                  style={sortBtn(data.sortMode === "date")}>
-                  {data.sortOrder === "oldest" ? "↑ oldest first" : "↓ newest first"}
-                </button>
-              </div>
-            )}
 
             {/* active tasks */}
             <div style={{ display: "flex", flexDirection: "column",
               gap: `${ui.taskGap}px`, marginBottom: "16px" }}>
-              {activeTasks.length === 0 && holdTasks.length === 0 && (
+              {canAdd && (
+                <AddTaskRow t={t} fonts={fonts} colors={paletteColors} tags={data.tags}
+                  ui={ui} draft={draft} onChange={updateDraft} onCommit={commitDraft}
+                  onCreateTag={createTagInline} inputRef={inputRef}/>
+              )}
+              {activeTasks.length === 0 && holdTasks.length === 0 && !canAdd && (
                 <div style={{
                   textAlign: "center", padding: "30px 0",
                   fontFamily: fonts.heading, fontSize: "21px", color: t.textFaint,
                 }}>
-                  {canAdd
-                    ? "nothing here yet — add a task above"
-                    : (data.rolloutCounts?.[selectedWeek] || 0) > 0
-                      ? `${data.rolloutCounts[selectedWeek]} task${data.rolloutCounts[selectedWeek] === 1 ? "" : "s"} rolled forward`
-                      : "no open tasks this week"}
+                  {(data.rolloutCounts?.[selectedWeek] || 0) > 0
+                    ? `${data.rolloutCounts[selectedWeek]} task${data.rolloutCounts[selectedWeek] === 1 ? "" : "s"} rolled forward`
+                    : "no open tasks this week"}
                 </div>
               )}
               {activeTasks.map((x) => (

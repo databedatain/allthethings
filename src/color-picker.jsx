@@ -24,8 +24,14 @@ export default function ColorPicker({
   const tagMatch = tags?.find((tg) => tg.color === value && tg.name?.trim());
   const canName = !!(value && onCreateTag && !tagMatch);
 
-  const close = () => { setOpen(false); setDraft(""); setHexDraft(""); };
-  const toggle = () => setOpen((o) => !o);
+  const close = () => { setOpen(false); setDraft(""); };
+  const toggle = () => {
+    if (!open) {
+      // sync the hex field to the current value when the popover opens
+      setHexDraft(value && /^#[0-9a-f]{6}$/i.test(value) ? value : "");
+    }
+    setOpen(!open);
+  };
 
   const submitHex = () => {
     const raw = hexDraft.trim();
@@ -84,7 +90,7 @@ export default function ColorPicker({
           <div style={{
             position: "absolute", top: 26, ...popoverPos, zIndex: 41,
             background: t.popover, border: `1px solid ${t.border}`,
-            borderRadius: 6, padding: 8, minWidth: 200,
+            borderRadius: 6, padding: 8,
             boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
             fontFamily: "inherit",
           }}>
@@ -102,7 +108,7 @@ export default function ColorPicker({
                 placeholder="#hex"
                 spellCheck={false}
                 style={{
-                  flex: 1, minWidth: 0, marginLeft: 6,
+                  width: 66, marginLeft: "auto",
                   padding: "2px 6px", borderRadius: 3,
                   border: `1px solid ${t.border}`, background: t.surface,
                   fontSize: 11, color: t.text, outline: "none",
@@ -165,6 +171,7 @@ export default function ColorPicker({
                     if (e.key === "Escape") close();
                   }}
                   placeholder="name this color…"
+                  maxLength={25}
                   style={{
                     flex: 1, minWidth: 0, padding: "3px 6px", borderRadius: 4,
                     border: `1px solid ${t.border}`, background: t.surface,
