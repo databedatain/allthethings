@@ -416,7 +416,7 @@ export default function BulletJournal() {
   const [data, setData] = useState(null);
   const [input, setInput] = useState("");
   const [query, setQuery] = useState("");
-  const [showDone, setShowDone] = useState(false);
+  const [doneOpen, setDoneOpen] = useState(() => new Map());
   const [showHold, setShowHold] = useState(true);
   const [expandedQ, setExpandedQ] = useState(() => new Set());
   const [loading, setLoading] = useState(true);
@@ -723,8 +723,19 @@ export default function BulletJournal() {
   const cur = currentWeekKey();
   const isEverything = selectedWeek === "everything";
   const isCurrent = selectedWeek === cur;
+  const isPast = !isCurrent && !isEverything;
   const canAdd = isCurrent || isEverything;
   const searching = query.trim().length > 0;
+
+  // done section: open by default in past weeks, closed elsewhere; manual
+  // toggles per week override the default
+  const showDone = doneOpen.has(selectedWeek) ? doneOpen.get(selectedWeek) : isPast;
+  const toggleShowDone = () =>
+    setDoneOpen((prev) => {
+      const next = new Map(prev);
+      next.set(selectedWeek, !showDone);
+      return next;
+    });
 
   const weekSet = new Set(data.tasks.map((x) => x.week));
   weekSet.add(cur);
@@ -873,45 +884,50 @@ export default function BulletJournal() {
     <div className="bj-root">
       {/* ─── sidebar ─── */}
       <aside className="bj-sidebar">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="search…"
-          style={{
-            width: "100%", padding: "7px 10px", borderRadius: "6px",
-            border: `1px solid ${t.border}`, background: t.surface,
-            fontFamily: fonts.body, fontSize: "14px",
-            outline: "none", color: t.text, marginBottom: "8px",
-            boxSizing: "border-box", textAlign: "center",
-          }}
-        />
-        <button style={navBtn(isEverything && !searching)}
-          onClick={() => goToWeek("everything")}>
-          ★ everything
-        </button>
-        <div style={divider} />
-        {weeksDesc.map((wk) => {
-          const active = selectedWeek === wk && !searching;
-          if (wk === cur) {
+        <div className="bj-sidebar-top">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="search…"
+            style={{
+              width: "100%", padding: "7px 10px", borderRadius: "6px",
+              border: `1px solid ${t.border}`, background: t.surface,
+              fontFamily: fonts.body, fontSize: "14px",
+              outline: "none", color: t.text, marginBottom: "8px",
+              boxSizing: "border-box", textAlign: "center",
+            }}
+          />
+          <button style={navBtn(isEverything && !searching)}
+            onClick={() => goToWeek("everything")}>
+            ★ everything
+          </button>
+          <div style={divider} />
+        </div>
+        <div className="bj-sidebar-weeks">
+          {weeksDesc.map((wk) => {
+            const active = selectedWeek === wk && !searching;
+            if (wk === cur) {
+              return (
+                <button key={wk} style={navBtn(active)} onClick={() => goToWeek(wk)}>
+                  this week
+                </button>
+              );
+            }
+            const p = weekParts(wk);
             return (
-              <button key={wk} style={navBtn(active)} onClick={() => goToWeek(wk)}>
-                this week
+              <button key={wk} onClick={() => goToWeek(wk)}
+                style={{ ...navBtn(active), display: "flex", alignItems: "baseline" }}>
+                <span style={{ flex: 1, textAlign: "right" }}>{p.left}</span>
+                <span style={{ padding: "0 5px", flexShrink: 0 }}>–</span>
+                <span style={{ flex: 1, textAlign: "left" }}>{p.right}</span>
               </button>
             );
-          }
-          const p = weekParts(wk);
-          return (
-            <button key={wk} onClick={() => goToWeek(wk)}
-              style={{ ...navBtn(active), display: "flex", alignItems: "baseline" }}>
-              <span style={{ flex: 1, textAlign: "right" }}>{p.left}</span>
-              <span style={{ padding: "0 5px", flexShrink: 0 }}>–</span>
-              <span style={{ flex: 1, textAlign: "left" }}>{p.right}</span>
-            </button>
-          );
-        })}
-        <div style={divider} />
+          })}
+        </div>
+        <div className="bj-sidebar-bottom">
+          <div style={divider} />
 
-        {/* settings panel */}
+          {/* settings panel */}
         <button onClick={() => setSettingsOpen((o) => !o)} style={panelToggle}>
           <span style={{
             display: "inline-block",
@@ -1100,6 +1116,7 @@ export default function BulletJournal() {
             )}
           </div>
         )}
+        </div>
       </aside>
 
       {/* ─── main ─── */}
@@ -1222,7 +1239,11 @@ export default function BulletJournal() {
                   textAlign: "center", padding: "30px 0",
                   fontFamily: fonts.heading, fontSize: "21px", color: t.textFaint,
                 }}>
-                  {canAdd ? "nothing here yet — add a task above" : "no open tasks this week"}
+                  {canAdd
+                    ? "nothing here yet — add a task above"
+                    : (data.rolloutCounts?.[selectedWeek] || 0) > 0
+                      ? `${data.rolloutCounts[selectedWeek]} task${data.rolloutCounts[selectedWeek] === 1 ? "" : "s"} rolled forward`
+                      : "no open tasks this week"}
                 </div>
               )}
               {activeTasks.map((x) => (
@@ -1265,7 +1286,7 @@ export default function BulletJournal() {
             {doneTasks.length > 0 && (
               <div style={{ marginBottom: "16px" }}>
                 <SectionToggle t={t} fonts={fonts} open={showDone}
-                  onToggle={() => setShowDone(!showDone)}
+                  onToggle={toggleShowDone}
                   label={`done (${doneTasks.length})`}
                   extra={!showDone && !isEverything && (
                     <span onClick={(e) => { e.stopPropagation(); clearDone(); }}

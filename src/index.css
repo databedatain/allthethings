@@ -21,6 +21,19 @@ body {
 .bj-sidebar {
   width: 224px;
   flex-shrink: 0;
+  position: sticky;
+  top: 18px;
+  max-height: calc(100vh - 36px);
+  display: flex;
+  flex-direction: column;
+}
+
+.bj-sidebar-top, .bj-sidebar-bottom { flex-shrink: 0; }
+.bj-sidebar-bottom { overflow-y: auto; }
+.bj-sidebar-weeks {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .bj-main {
@@ -34,5 +47,10 @@ body {
   }
   .bj-sidebar {
     width: 100%;
+    position: static;
+    max-height: none;
+    display: block;
   }
+  .bj-sidebar-weeks { overflow-y: visible; }
+  .bj-sidebar-bottom { overflow-y: visible; }
 }

@@ -56,10 +56,11 @@ export function getDensity(id) {
 
 export function defaultData() {
   return {
-    schemaVersion: 9,
+    schemaVersion: 10,
     tasks: [],
     trash: [],
     weekNotes: {},
+    rolloutCounts: {},
     sortMode: "custom",
     sortOrder: "oldest",
     nextId: 1,
@@ -166,22 +167,29 @@ export function migrate(data) {
     };
   }
 
+  if (d.schemaVersion < 10) {
+    d = { ...d, schemaVersion: 10, rolloutCounts: d.rolloutCounts || {} };
+  }
+
   return d;
 }
 
 // Move every not-done task out of past weeks into the current week (in place,
-// not copied). Idempotent: safe to run on every load.
+// not copied). Also tallies a per-week rollout count so past weeks can report
+// how many tasks moved on. Idempotent: safe to run on every load.
 export function rollIncompletes(data) {
   const cur = currentWeekKey();
   let changed = false;
+  const counts = { ...(data.rolloutCounts || {}) };
   const tasks = data.tasks.map((t) => {
     if (t.status !== "done" && t.week < cur) {
       changed = true;
+      counts[t.week] = (counts[t.week] || 0) + 1;
       return { ...t, week: cur };
     }
     return t;
   });
-  return changed ? { ...data, tasks } : data;
+  return changed ? { ...data, tasks, rolloutCounts: counts } : data;
 }
 
 // Test fixture: 4 prior weeks of tasks + notes. Idempotent per week — a
