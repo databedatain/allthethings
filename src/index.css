@@ -29,7 +29,6 @@ body {
 }
 
 .bj-sidebar-top, .bj-sidebar-bottom { flex-shrink: 0; }
-.bj-sidebar-bottom { overflow-y: auto; }
 .bj-sidebar-weeks {
   flex: 1 1 auto;
   min-height: 0;
@@ -52,5 +51,4 @@ body {
     display: block;
   }
   .bj-sidebar-weeks { overflow-y: visible; }
-  .bj-sidebar-bottom { overflow-y: visible; }
 }
