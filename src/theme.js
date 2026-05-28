@@ -105,6 +105,18 @@ export function darken(hex, amt) {
   return toHex(r * (1 - amt), g * (1 - amt), b * (1 - amt));
 }
 
+// perceived brightness, 0–1 (Rec. 601 luma)
+export function luminance(hex) {
+  const [r, g, b] = hexToRgb(hex);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
+// pick a legible ink for text sitting on top of `hex` — dark text on light
+// accents (gold/cyan), white on dark ones. One source of truth for accentText.
+export function readableOn(hex) {
+  return luminance(hex) > 0.6 ? "#1c1c1c" : "#ffffff";
+}
+
 // base, +20% lighter, +40% lighter — the popover swatch column for one colour
 export function shades(hex) {
   return [hex, lighten(hex, 0.2), lighten(hex, 0.4)];
@@ -138,13 +150,16 @@ export function buildTheme(cfg) {
     popover: dark ? "#2c2e33" : "#ffffff",
     text: dark ? "#e8e6e1" : "#2c2c2c",
     textMuted: dark ? "#9b958b" : "#8a8275",
-    textFaint: dark ? "#62626a" : "#bdb8ad",
+    // nudged stronger than before — textFaint carries real meaning (dates,
+    // hints, placeholders) and the old values sat near the a11y floor.
+    textFaint: dark ? "#79797f" : "#a39c8d",
     border: dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.09)",
     divider: dark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)",
-    danger: dark ? "#cf9595" : "#cf9a9a",
+    // more saturated so destructive actions actually read as destructive.
+    danger: dark ? "#db8a84" : "#c1564f",
     question: dark ? "#86a4cb" : "#6a8dba",
     accent: highlight,
-    accentText: "#ffffff",
+    accentText: readableOn(highlight),
     accentSoft: rgba(highlight, dark ? 0.24 : 0.16),
     accentBorder: rgba(highlight, 0.5),
     accentText2: dark ? lighten(highlight, 0.25) : darken(highlight, 0.18),

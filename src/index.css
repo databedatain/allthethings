@@ -36,3 +36,29 @@ body {
     width: 100%;
   }
 }
+
+/* Calmer task rows: secondary, inactive actions stay out of the way and fade
+ * in on hover/focus. Per-icon (not a wrapping cluster) so state-bearing icons
+ * — a set star, an active hold, a saved question — can stay visible while only
+ * the inactive affordances hide. Opacity (not display) keeps layout stable so
+ * the row never reflows. */
+.bj-row-action {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+@media (hover: hover) {
+  .bj-row:hover .bj-row-action,
+  .bj-row:focus-within .bj-row-action {
+    opacity: 1;
+  }
+}
+/* touch (and any no-hover input): nothing to hover, so always show */
+@media (hover: none) {
+  .bj-row-action {
+    opacity: 1;
+  }
+}
+/* an armed delete confirm must survive the mouse leaving the row */
+.bj-row-action.is-armed {
+  opacity: 1;
+}

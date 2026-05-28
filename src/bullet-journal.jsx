@@ -22,6 +22,7 @@ import {
   loadCatalogFonts,
 } from "./font.js";
 import { buildTheme, rgba, presetBg, PRESETS, PALETTES, getPalette } from "./theme.js";
+import { TYPE, SP, CONTROL } from "./tokens.js";
 import ColorPicker from "./color-picker.jsx";
 
 const STORAGE_KEY = "bullet-journal-data";
@@ -135,6 +136,7 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <div
+        className="bj-row"
         draggable={drag.enabled && !editing}
         onDragStart={() => drag.onStart(task.id)}
         onDragOver={(e) => { if (drag.enabled) { e.preventDefault(); drag.onOver(task.id); } }}
@@ -208,7 +210,7 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
           renderTrigger={(toggle) => {
             const pillFont = `${Math.max(10, ui.taskFont - 5)}px`;
             const padding = "1px 8px";
-            const radius = "9px";
+            const radius = CONTROL.pill;
             if (tagOnTask) {
               return (
                 <button onClick={toggle} title={`Tag: ${tagOnTask.name}`}
@@ -247,38 +249,42 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
 
         {/* date */}
         <span style={{
-          fontFamily: fonts.heading, fontSize: `${ui.date}px`,
+          fontFamily: fonts.body, fontSize: `${ui.date}px`,
           color: t.textMuted, flexShrink: 0, whiteSpace: "nowrap", marginRight: "4px",
         }}>{formatDate(task.created)}</span>
 
-        {/* star toggle */}
+        {/* star toggle — a set star stays visible; an empty one hides until hover */}
         <button onClick={() => onToggleStar(task.id)} title={isStar ? "Unstar" : "Star"}
+          className={isStar ? undefined : "bj-row-action"}
           style={{ ...iconBtn, color: isStar ? t.star : t.textFaint }}>
           <IconStar filled={isStar} size={ui.star} />
         </button>
 
-        {/* question toggle */}
+        {/* question toggle — visible when a question exists */}
         <button onClick={() => onToggleQ(task.id)}
           title={isQExpanded ? "Collapse question" : "Add/view question"}
+          className={hasQ ? undefined : "bj-row-action"}
           style={{ ...iconBtn, color: hasQ ? t.question : t.textFaint }}>
           <IconQuestion size={ui.icon} />
         </button>
 
-        {/* hold toggle */}
+        {/* hold toggle — visible while on hold (resume affordance) */}
         <button onClick={() => onStatusChange(task.id, isHold ? "active" : "hold")}
           title={isHold ? "Resume" : "Put on hold"}
+          className={isHold ? undefined : "bj-row-action"}
           style={{ ...iconBtn, color: isHold ? t.holdText : t.textFaint }}>
           {isHold ? <IconUndo size={ui.icon} /> : <IconPause size={ui.icon} />}
         </button>
 
-        {/* delete */}
+        {/* delete — always secondary; stays revealed while the confirm is armed */}
         <button onClick={() => onDelete(task.id)}
           title={confirmKey === `del:${task.id}` ? "Click again to remove" : "Move to trash"}
+          className={`bj-row-action${confirmKey === `del:${task.id}` ? " is-armed" : ""}`}
           style={{
             ...iconBtn,
             color: confirmKey === `del:${task.id}` ? t.danger : t.textFaint,
             fontFamily: fonts.body,
-            fontSize: confirmKey === `del:${task.id}` ? "11px" : undefined,
+            fontSize: confirmKey === `del:${task.id}` ? TYPE.caption : undefined,
             fontWeight: confirmKey === `del:${task.id}` ? 700 : undefined,
           }}>
           {confirmKey === `del:${task.id}` ? "sure?" : <IconTrash size={ui.icon} />}
@@ -295,7 +301,7 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <label style={{
-              fontFamily: fonts.heading, fontSize: "16px",
+              fontFamily: fonts.body, fontSize: `${ui.qLabel}px`,
               color: t.question, flexShrink: 0, width: "40px",
             }}>who</label>
             <input
@@ -305,14 +311,14 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
               style={{
                 flex: 1, padding: "6px 9px", borderRadius: "4px",
                 border: `1px solid ${t.border}`, background: t.surface,
-                fontFamily: fonts.body, fontSize: "15px",
+                fontFamily: fonts.body, fontSize: `${ui.qInput}px`,
                 outline: "none", color: t.text,
               }}
             />
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <label style={{
-              fontFamily: fonts.heading, fontSize: "16px",
+              fontFamily: fonts.body, fontSize: `${ui.qLabel}px`,
               color: t.question, flexShrink: 0, width: "40px", paddingTop: "4px",
             }}>ask</label>
             <textarea
@@ -323,7 +329,7 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
               style={{
                 flex: 1, padding: "6px 9px", borderRadius: "4px",
                 border: `1px solid ${t.border}`, background: t.surface,
-                fontFamily: fonts.body, fontSize: "15px",
+                fontFamily: fonts.body, fontSize: `${ui.qInput}px`,
                 outline: "none", color: t.text, resize: "vertical",
                 lineHeight: 1.5, boxSizing: "border-box",
               }}
@@ -338,9 +344,9 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
 /* ─── done row ─── */
 function DoneRow({ task, t, fonts, ui, confirmKey, onRestore, onDelete }) {
   return (
-    <div style={{
+    <div className="bj-row" style={{
       display: "flex", alignItems: "center", gap: "9px",
-      padding: `${Math.max(2, ui.padY - 1)}px ${ui.padX + 6}px`, borderRadius: "5px",
+      padding: `${Math.max(2, ui.padY - 1)}px ${ui.padX + 6}px`, borderRadius: CONTROL.radiusSm,
       background: t.accentSoft,
     }}>
       {/* checked box — uncheck to move back to active */}
@@ -357,16 +363,17 @@ function DoneRow({ task, t, fonts, ui, confirmKey, onRestore, onDelete }) {
         textDecorationColor: t.textFaint,
       }}>{task.text}</span>
       <span style={{
-        fontFamily: fonts.heading, fontSize: `${Math.round(ui.date * 0.94)}px`, color: t.textFaint,
+        fontFamily: fonts.body, fontSize: `${Math.round(ui.date * 0.94)}px`, color: t.textFaint,
       }}>{formatDate(task.created)}</span>
       <button onClick={() => onDelete(task.id)}
         title={confirmKey === `del:${task.id}` ? "Click again to remove" : "Move to trash"}
+        className={`bj-row-action${confirmKey === `del:${task.id}` ? " is-armed" : ""}`}
         style={{
           background: "none", border: "none", cursor: "pointer", padding: "3px",
           color: confirmKey === `del:${task.id}` ? t.danger : t.textFaint,
           display: "flex", alignItems: "center",
           fontFamily: fonts.body,
-          fontSize: confirmKey === `del:${task.id}` ? "11px" : undefined,
+          fontSize: confirmKey === `del:${task.id}` ? TYPE.caption : undefined,
           fontWeight: confirmKey === `del:${task.id}` ? 700 : undefined,
         }}>
         {confirmKey === `del:${task.id}` ? "sure?" : <IconTrash size={ui.icon} />}
@@ -390,9 +397,9 @@ function PaletteSelect({ t, fonts, value, onChange }) {
   );
   const rowStyle = (active) => ({
     width: "100%", display: "flex", alignItems: "center",
-    justifyContent: "space-between", gap: "8px", cursor: "pointer",
-    borderRadius: "5px", padding: "4px 8px",
-    fontFamily: fonts.body, fontSize: "13px", color: t.textMuted,
+    justifyContent: "space-between", gap: SP.sm, cursor: "pointer",
+    borderRadius: CONTROL.radiusSm, padding: "4px 8px",
+    fontFamily: fonts.body, fontSize: TYPE.label, color: t.textMuted,
     border: "none", background: active ? t.accentSoft : "transparent",
   });
   return (
@@ -436,8 +443,8 @@ function FontSelect({ value, onChange, hasCustom, t }) {
       <button onClick={() => setOpen((o) => !o)} style={{
         width: "120px", textAlign: "left", cursor: "pointer",
         border: `1px solid ${t.border}`, background: t.surface,
-        borderRadius: "5px", padding: "4px 8px",
-        fontFamily: current.stack, fontSize: "14px", color: t.text,
+        borderRadius: CONTROL.radiusSm, padding: "4px 8px",
+        fontFamily: current.stack, fontSize: TYPE.label, color: t.text,
         whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
       }}>{current.label}</button>
       {open && (
@@ -455,9 +462,9 @@ function FontSelect({ value, onChange, hasCustom, t }) {
               <button key={o.id} onClick={() => { onChange(o.id); setOpen(false); }}
                 style={{
                   display: "block", width: "100%", textAlign: "left", cursor: "pointer",
-                  border: "none", borderRadius: 4, padding: "5px 8px",
+                  border: "none", borderRadius: CONTROL.radiusSm, padding: "5px 8px",
                   background: o.id === value ? t.accentSoft : "transparent",
-                  fontFamily: o.stack, fontSize: "15px",
+                  fontFamily: o.stack, fontSize: TYPE.body,
                   color: o.id === value ? t.accentText2 : t.text,
                 }}>{o.label}</button>
             ))}
@@ -492,7 +499,7 @@ function AddTaskRow({ t, fonts, colors, tags, ui, draft, onChange, onCommit, onR
   };
   const pillFont = `${Math.max(10, ui.taskFont - 5)}px`;
   const pillPad = "1px 8px";
-  const pillRadius = "9px";
+  const pillRadius = CONTROL.pill;
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -615,7 +622,7 @@ function AddTaskRow({ t, fonts, colors, tags, ui, draft, onChange, onCommit, onR
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <label style={{
-              fontFamily: fonts.heading, fontSize: "16px",
+              fontFamily: fonts.body, fontSize: `${ui.qLabel}px`,
               color: t.question, flexShrink: 0, width: "40px",
             }}>who</label>
             <input value={draft.questionWho}
@@ -624,13 +631,13 @@ function AddTaskRow({ t, fonts, colors, tags, ui, draft, onChange, onCommit, onR
               style={{
                 flex: 1, padding: "6px 9px", borderRadius: "4px",
                 border: `1px solid ${t.border}`, background: t.surface,
-                fontFamily: fonts.body, fontSize: "15px",
+                fontFamily: fonts.body, fontSize: `${ui.qInput}px`,
                 outline: "none", color: t.text,
               }}/>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <label style={{
-              fontFamily: fonts.heading, fontSize: "16px",
+              fontFamily: fonts.body, fontSize: `${ui.qLabel}px`,
               color: t.question, flexShrink: 0, width: "40px", paddingTop: "4px",
             }}>ask</label>
             <textarea value={draft.questionText}
@@ -640,7 +647,7 @@ function AddTaskRow({ t, fonts, colors, tags, ui, draft, onChange, onCommit, onR
               style={{
                 flex: 1, padding: "6px 9px", borderRadius: "4px",
                 border: `1px solid ${t.border}`, background: t.surface,
-                fontFamily: fonts.body, fontSize: "15px",
+                fontFamily: fonts.body, fontSize: `${ui.qInput}px`,
                 outline: "none", color: t.text, resize: "vertical",
                 lineHeight: 1.5, boxSizing: "border-box",
               }}/>
@@ -656,8 +663,8 @@ function SectionToggle({ t, fonts, open, onToggle, label, extra }) {
   return (
     <button onClick={onToggle} style={{
       background: "none", border: "none", cursor: "pointer",
-      fontFamily: fonts.heading, fontSize: "19px",
-      color: t.textMuted, padding: "0 0 8px 0",
+      fontFamily: fonts.heading, fontSize: TYPE.heading,
+      color: t.textMuted, padding: `0 0 ${SP.sm}px 0`,
       display: "flex", alignItems: "center", gap: "6px",
     }}>
       <span style={{
@@ -995,7 +1002,7 @@ export default function BulletJournal() {
   if (loading || !data) {
     return (
       <div style={{ display: "flex", justifyContent: "center", padding: "80px 0",
-        fontFamily: "'Caveat', cursive", fontSize: "26px", color: "#999" }}>
+        fontFamily: "'Caveat', cursive", fontSize: TYPE.title, color: "#999" }}>
         loading journal…
       </div>
     );
@@ -1022,6 +1029,8 @@ export default function BulletJournal() {
     icon: px(16),
     grip: px(17),
     date: px(16),
+    qLabel: px(14),
+    qInput: px(15),
   };
   const fonts = {
     heading: fontStack(data.headingFont, !!fontName),
@@ -1121,37 +1130,37 @@ export default function BulletJournal() {
   const navBtn = (active) => ({
     width: "100%", textAlign: "center",
     background: active ? t.accentSoft : "transparent",
-    border: "none", cursor: "pointer", borderRadius: "5px",
+    border: "none", cursor: "pointer", borderRadius: CONTROL.radius,
     padding: "7px 10px", marginBottom: "2px",
-    fontFamily: fonts.body, fontSize: "15px",
+    fontFamily: fonts.body, fontSize: TYPE.body,
     color: active ? t.accentText2 : t.textMuted,
     fontWeight: active ? 600 : 400,
   });
-  const divider = { height: "1px", background: t.divider, margin: "9px 4px" };
+  const divider = { height: "1px", background: t.divider, margin: `${SP.sm}px ${SP.xs}px` };
   const settingRow = {
     display: "flex", alignItems: "center", justifyContent: "space-between",
-    fontFamily: fonts.body, fontSize: "14px", color: t.textMuted,
+    fontFamily: fonts.body, fontSize: TYPE.label, color: t.textMuted,
   };
   const linkBtn = {
     background: "none", border: "none", cursor: "pointer", padding: 0,
-    fontFamily: fonts.body, fontSize: "14px", color: t.question,
+    fontFamily: fonts.body, fontSize: TYPE.label, color: t.question,
     textAlign: "left",
   };
   const segBtn = (active) => ({
-    flex: 1, cursor: "pointer", padding: "3px 0",
+    flex: 1, cursor: "pointer", height: CONTROL.hSm,
     border: `1px solid ${t.border}`,
     background: active ? t.accent : "transparent",
     color: active ? t.accentText : t.textMuted,
-    fontFamily: fonts.body, fontSize: "12px",
+    fontFamily: fonts.body, fontSize: TYPE.caption,
   });
   const panelToggle = {
     display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
     width: "100%", background: "none", border: "none", cursor: "pointer",
-    padding: "4px", fontFamily: fonts.heading, fontSize: "17px", color: t.textMuted,
+    padding: SP.xs, fontFamily: fonts.body, fontSize: TYPE.body, color: t.textMuted,
   };
   const sortBtn = (active) => ({
     background: "none", border: "none", cursor: "pointer", padding: "2px 0",
-    fontFamily: fonts.heading, fontSize: "16px",
+    fontFamily: fonts.body, fontSize: TYPE.body,
     color: active ? t.accentText2 : t.textFaint,
     fontWeight: active ? 600 : 400,
   });
@@ -1173,9 +1182,9 @@ export default function BulletJournal() {
   const undoBtn = (label, fn) => (
     <button onClick={fn} title={label}
       style={{
-        width: "32px", height: "32px", borderRadius: "6px",
+        width: CONTROL.h, height: CONTROL.h, borderRadius: CONTROL.radius,
         border: `1px solid ${t.border}`, background: t.surface,
-        cursor: "pointer", color: t.textMuted, fontSize: "16px",
+        cursor: "pointer", color: t.textMuted, fontSize: TYPE.body,
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>{label === "Undo" ? "↶" : "↷"}</button>
   );
@@ -1190,10 +1199,10 @@ export default function BulletJournal() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="search…"
             style={{
-              width: "100%", padding: "7px 10px", borderRadius: "6px",
+              width: "100%", padding: "7px 10px", borderRadius: CONTROL.radius,
               border: `1px solid ${t.border}`, background: t.surface,
-              fontFamily: fonts.body, fontSize: "14px",
-              outline: "none", color: t.text, marginBottom: "8px",
+              fontFamily: fonts.body, fontSize: TYPE.body,
+              outline: "none", color: t.text, marginBottom: SP.sm,
               boxSizing: "border-box", textAlign: "center",
             }}
           />
@@ -1261,19 +1270,20 @@ export default function BulletJournal() {
                   onChange={selectPalette} />
               </div>
             </div>
-            {/* theme presets for the active palette */}
+            {/* theme — presets set highlight/star/hold; the fine-tune pickers
+                below override the active preset's individual colours */}
             <div>
-              <div style={{ ...settingRow, marginBottom: "4px" }}>theme</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px" }}>
+              <div style={{ ...settingRow, marginBottom: SP.xs }}>theme</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: SP.xs }}>
                 {PRESETS.filter((p) => p.palette === data.palette).map((p) => (
                   <button key={p.id} onClick={() => applyPreset(p)} title={p.name}
                     style={{
                       display: "flex", alignItems: "center",
                       justifyContent: "flex-start", gap: "5px",
-                      cursor: "pointer", borderRadius: "5px",
+                      cursor: "pointer", borderRadius: CONTROL.radiusSm,
                       border: `1px solid ${t.border}`, background: t.surface,
                       padding: "4px 6px", fontFamily: fonts.body,
-                      fontSize: "12px", color: t.textMuted,
+                      fontSize: TYPE.caption, color: t.textMuted,
                     }}>
                     <span style={{ display: "flex", gap: "3px", flexShrink: 0 }}>
                       {[p.highlight, p.star, p.hold].map((c, i) => (
@@ -1288,35 +1298,44 @@ export default function BulletJournal() {
                   </button>
                 ))}
               </div>
-            </div>
-            {/* colour pickers in a 2x2 grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
-              columnGap: "10px", rowGap: "8px" }}>
-              <div style={settingRow}>
-                <span>UI Highlight</span>
-                <ColorPicker value={data.theme.highlight} t={t} colors={paletteColors}
-                  align="left" size={16}
-                  onChange={(c) => c && setThemeKey("highlight", c)} />
-              </div>
-              <div style={settingRow}>
-                <span>Star Color</span>
-                <ColorPicker value={data.theme.star} t={t} colors={paletteColors}
-                  align="left" size={16}
-                  onChange={(c) => c && setThemeKey("star", c)} />
-              </div>
-              <div style={settingRow}>
-                <span>Hold Color</span>
-                <ColorPicker value={data.theme.hold} t={t} colors={paletteColors}
-                  align="left" size={16}
-                  onChange={(c) => c && setThemeKey("hold", c)} />
-              </div>
-              <div style={settingRow}>
-                <span>Background</span>
-                <ColorPicker
-                  value={(t.dark ? data.theme.bgDark : data.theme.bgLight) || null}
-                  t={t} colors={paletteColors} allowNone variant="bg"
-                  align="left" size={16}
-                  onChange={(c) => setThemeKey(t.dark ? "bgDark" : "bgLight", c)} />
+              {/* fine-tune: indented + accent rule signals these belong to the
+                  active preset and override its individual colours */}
+              <div style={{
+                marginTop: SP.sm, paddingTop: SP.sm, paddingLeft: SP.sm,
+                borderTop: `1px solid ${t.divider}`,
+                borderLeft: `2px solid ${t.accentBorder}`,
+                display: "flex", flexDirection: "column", gap: SP.sm,
+              }}>
+                <div style={{ ...settingRow, color: t.textFaint }}>fine-tune</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
+                  columnGap: SP.md, rowGap: SP.sm }}>
+                  <div style={settingRow}>
+                    <span>highlight</span>
+                    <ColorPicker value={data.theme.highlight} t={t} colors={paletteColors}
+                      align="left" size={16}
+                      onChange={(c) => c && setThemeKey("highlight", c)} />
+                  </div>
+                  <div style={settingRow}>
+                    <span>star</span>
+                    <ColorPicker value={data.theme.star} t={t} colors={paletteColors}
+                      align="left" size={16}
+                      onChange={(c) => c && setThemeKey("star", c)} />
+                  </div>
+                  <div style={settingRow}>
+                    <span>hold</span>
+                    <ColorPicker value={data.theme.hold} t={t} colors={paletteColors}
+                      align="left" size={16}
+                      onChange={(c) => c && setThemeKey("hold", c)} />
+                  </div>
+                  <div style={settingRow}>
+                    <span>background</span>
+                    <ColorPicker
+                      value={(t.dark ? data.theme.bgDark : data.theme.bgLight) || null}
+                      t={t} colors={paletteColors} allowNone variant="bg"
+                      align="left" size={16}
+                      onChange={(c) => setThemeKey(t.dark ? "bgDark" : "bgLight", c)} />
+                  </div>
+                </div>
               </div>
             </div>
             {/* tags */}
@@ -1340,7 +1359,7 @@ export default function BulletJournal() {
                     style={{
                       flex: 1, minWidth: 0, padding: "3px 7px", borderRadius: 4,
                       border: `1px solid ${t.border}`, background: t.surface,
-                      fontFamily: fonts.body, fontSize: 13, color: t.text, outline: "none",
+                      fontFamily: fonts.body, fontSize: TYPE.label, color: t.text, outline: "none",
                     }}
                   />
                   <button
@@ -1350,7 +1369,7 @@ export default function BulletJournal() {
                       background: "none", border: "none", cursor: "pointer",
                       padding: 0, color: t.danger,
                       fontFamily: fonts.body,
-                      fontSize: confirmKey === `tag:${tag.color}` ? 11 : 13,
+                      fontSize: confirmKey === `tag:${tag.color}` ? TYPE.caption : TYPE.label,
                       fontWeight: confirmKey === `tag:${tag.color}` ? 700 : 400,
                     }}>
                     {confirmKey === `tag:${tag.color}` ? "sure?" : "✕"}
@@ -1395,7 +1414,7 @@ export default function BulletJournal() {
                 <span>custom file</span>
                 <label style={{ ...linkBtn, cursor: "pointer", display: "flex",
                   alignItems: "center", gap: "4px" }}>
-                  <span style={{ color: t.textMuted, fontSize: "13px", maxWidth: "84px",
+                  <span style={{ color: t.textMuted, fontSize: TYPE.label, maxWidth: "84px",
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {fontName || "import…"}
                   </span>
@@ -1437,13 +1456,13 @@ export default function BulletJournal() {
           <div style={{ padding: "6px 4px 4px", display: "flex",
             flexDirection: "column", gap: "5px" }}>
             {data.trash.length === 0 && (
-              <div style={{ fontFamily: fonts.body, fontSize: "13px",
+              <div style={{ fontFamily: fonts.body, fontSize: TYPE.label,
                 color: t.textFaint, textAlign: "center" }}>empty</div>
             )}
             {data.trash.map((x) => (
               <div key={x.id} style={{
                 display: "flex", alignItems: "center", gap: "6px",
-                fontFamily: fonts.body, fontSize: "13px", color: t.textMuted,
+                fontFamily: fonts.body, fontSize: TYPE.label, color: t.textMuted,
               }}>
                 <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis",
                   whiteSpace: "nowrap" }}>{x.text}</span>
@@ -1456,7 +1475,7 @@ export default function BulletJournal() {
                   title={confirmKey === `forever:${x.id}` ? "Click again to delete forever" : "Delete forever"}
                   style={{ background: "none", border: "none", cursor: "pointer",
                     padding: 0, color: t.danger, fontFamily: fonts.body,
-                    fontSize: confirmKey === `forever:${x.id}` ? "12px" : "14px",
+                    fontSize: confirmKey === `forever:${x.id}` ? TYPE.caption : TYPE.label,
                     fontWeight: confirmKey === `forever:${x.id}` ? 700 : 400 }}>
                   {confirmKey === `forever:${x.id}` ? "sure?" : "✕"}
                 </button>
@@ -1479,18 +1498,18 @@ export default function BulletJournal() {
         {searching ? (
           /* ── search results ── */
           <div>
-            <h1 style={{ fontFamily: fonts.heading, fontSize: "32px", fontWeight: 600,
+            <h1 style={{ fontFamily: fonts.heading, fontSize: TYPE.display, fontWeight: 600,
               color: t.text, margin: "0 0 14px", lineHeight: 1.1 }}>
               search · “{query.trim()}”
             </h1>
             {taskHits.length === 0 && noteHits.length === 0 && (
-              <div style={{ fontFamily: fonts.heading, fontSize: "20px", color: t.textFaint }}>
+              <div style={{ fontFamily: fonts.heading, fontSize: TYPE.heading, color: t.textFaint }}>
                 no matches
               </div>
             )}
             {taskHits.length > 0 && (
               <div style={{ marginBottom: "18px" }}>
-                <div style={{ fontFamily: fonts.heading, fontSize: "19px",
+                <div style={{ fontFamily: fonts.heading, fontSize: TYPE.heading,
                   color: t.textMuted, marginBottom: "6px" }}>
                   tasks ({taskHits.length})
                 </div>
@@ -1501,11 +1520,11 @@ export default function BulletJournal() {
                         textAlign: "left", cursor: "pointer",
                         background: t.surface, border: `1px solid ${t.border}`,
                         borderRadius: "6px", padding: "8px 11px",
-                        fontFamily: fonts.body, fontSize: "16px", color: t.text,
+                        fontFamily: fonts.body, fontSize: TYPE.body, color: t.text,
                         display: "flex", justifyContent: "space-between", gap: "10px",
                       }}>
                       <span>{x.text}</span>
-                      <span style={{ fontFamily: fonts.heading, fontSize: "14px",
+                      <span style={{ fontFamily: fonts.body, fontSize: TYPE.label,
                         color: t.textMuted, whiteSpace: "nowrap" }}>
                         {x.week === cur ? "this week" : weekLabel(x.week, true)}
                         {x.status === "done" ? " · done" : x.status === "hold" ? " · hold" : ""}
@@ -1517,7 +1536,7 @@ export default function BulletJournal() {
             )}
             {noteHits.length > 0 && (
               <div>
-                <div style={{ fontFamily: fonts.heading, fontSize: "19px",
+                <div style={{ fontFamily: fonts.heading, fontSize: TYPE.heading,
                   color: t.textMuted, marginBottom: "6px" }}>
                   notes ({noteHits.length})
                 </div>
@@ -1528,9 +1547,9 @@ export default function BulletJournal() {
                         textAlign: "left", cursor: "pointer",
                         background: t.surface, border: `1px solid ${t.border}`,
                         borderRadius: "6px", padding: "8px 11px",
-                        fontFamily: fonts.body, fontSize: "15px", color: t.textMuted,
+                        fontFamily: fonts.body, fontSize: TYPE.body, color: t.textMuted,
                       }}>
-                      <span style={{ fontFamily: fonts.heading, fontSize: "15px",
+                      <span style={{ fontFamily: fonts.body, fontSize: TYPE.body,
                         color: t.text }}>
                         {wk === cur ? "this week" : weekLabel(wk, true)}
                       </span>
@@ -1550,14 +1569,14 @@ export default function BulletJournal() {
               gap: "16px", flexWrap: "wrap", marginBottom: "14px",
             }}>
               {isEverything ? (
-                <h1 style={{ fontFamily: fonts.heading, fontSize: "32px", fontWeight: 600,
+                <h1 style={{ fontFamily: fonts.heading, fontSize: TYPE.display, fontWeight: 600,
                   color: t.text, margin: 0, lineHeight: 1.1 }}>everything</h1>
               ) : (
-                <h1 style={{ fontFamily: fonts.heading, fontSize: "32px", fontWeight: 600,
+                <h1 style={{ fontFamily: fonts.heading, fontSize: TYPE.display, fontWeight: 600,
                   color: t.text, margin: 0, lineHeight: 1.1,
                   display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap" }}>
                   {isCurrent ? "this week" : weekLabel(selectedWeek, true)}
-                  <span style={{ fontFamily: fonts.heading, fontSize: "18px",
+                  <span style={{ fontFamily: fonts.heading, fontSize: TYPE.heading,
                     color: t.textMuted, fontWeight: 400 }}>
                     {isCurrent ? weekLabel(selectedWeek) : "· past week"}
                   </span>
@@ -1584,7 +1603,7 @@ export default function BulletJournal() {
               {activeTasks.length === 0 && holdTasks.length === 0 && !canAdd && (
                 <div style={{
                   textAlign: "center", padding: "30px 0",
-                  fontFamily: fonts.heading, fontSize: "21px", color: t.textFaint,
+                  fontFamily: fonts.heading, fontSize: TYPE.title, color: t.textFaint,
                 }}>
                   {(data.rolloutCounts?.[selectedWeek] || 0) > 0
                     ? `${data.rolloutCounts[selectedWeek]} task${data.rolloutCounts[selectedWeek] === 1 ? "" : "s"} rolled forward`
@@ -1635,7 +1654,7 @@ export default function BulletJournal() {
                   label={`done (${doneTasks.length})`}
                   extra={!showDone && !isEverything && (
                     <span onClick={(e) => { e.stopPropagation(); clearDone(); }}
-                      style={{ fontSize: "14px", marginLeft: "8px", color: t.danger }}
+                      style={{ fontFamily: fonts.body, fontSize: TYPE.label, marginLeft: "8px", color: t.danger }}
                       title="Clear done in this week">
                       clear
                     </span>
@@ -1651,7 +1670,7 @@ export default function BulletJournal() {
                     {!isEverything && (
                       <button onClick={clearDone} style={{
                         background: "none", border: "none", cursor: "pointer",
-                        fontFamily: fonts.heading, fontSize: "15px",
+                        fontFamily: fonts.body, fontSize: TYPE.body,
                         color: t.danger, padding: "8px 0 0", textAlign: "left",
                       }}>clear done in this week</button>
                     )}
@@ -1666,7 +1685,7 @@ export default function BulletJournal() {
                 <div style={{ borderTop: `1px dashed ${t.divider}`, margin: "0 0 12px" }} />
                 <div>
                   <label style={{
-                    fontFamily: fonts.heading, fontSize: "22px", color: t.textMuted,
+                    fontFamily: fonts.heading, fontSize: TYPE.title, color: t.textMuted,
                     display: "block", marginBottom: "6px",
                   }}>notes</label>
                   <textarea
@@ -1677,7 +1696,7 @@ export default function BulletJournal() {
                     style={{
                       width: "100%", padding: "12px 14px", borderRadius: "6px",
                       border: `1px solid ${t.border}`, background: t.surfaceAlt,
-                      fontFamily: fonts.body, fontSize: "17px",
+                      fontFamily: fonts.body, fontSize: TYPE.body,
                       color: t.text, outline: "none", resize: "vertical",
                       lineHeight: 1.6, boxSizing: "border-box",
                     }}
