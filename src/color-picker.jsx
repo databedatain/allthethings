@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NEUTRALS, shades, bgShades } from "./theme.js";
+import { TYPE, SP, CONTROL } from "./tokens.js";
 
 const HEX_RE = /^#?[0-9a-f]{6}$/i;
 
@@ -54,7 +55,7 @@ export default function ColorPicker({
         onClick={() => { onChange(color); close(); }}
         title={color || "none"}
         style={{
-          width: 17, height: 17, borderRadius: 3, padding: 0, cursor: "pointer",
+          width: 17, height: 17, borderRadius: CONTROL.radiusSm, padding: 0, cursor: "pointer",
           border: selected ? `2px solid ${t.text}` : `1px solid ${t.border}`,
           background: color || (t.dark ? "#3a3a3f" : "#fff"),
           backgroundImage: color ? "none" : none,
@@ -68,7 +69,7 @@ export default function ColorPicker({
       onClick={toggle}
       title="Pick color"
       style={{
-        width: size, height: size, borderRadius: 4, padding: 0, cursor: "pointer",
+        width: size, height: size, borderRadius: CONTROL.radiusSm, padding: 0, cursor: "pointer",
         border: `1px solid ${t.border}`,
         background: value || (t.dark ? "#3a3a3f" : "#fff"),
         backgroundImage: value ? "none" : none,
@@ -90,7 +91,7 @@ export default function ColorPicker({
           <div style={{
             position: "absolute", top: 26, ...popoverPos, zIndex: 41,
             background: t.popover, border: `1px solid ${t.border}`,
-            borderRadius: 6, padding: 8,
+            borderRadius: CONTROL.radius, padding: SP.sm,
             boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
             fontFamily: "inherit",
           }}>
@@ -109,9 +110,9 @@ export default function ColorPicker({
                 spellCheck={false}
                 style={{
                   width: 80, marginLeft: 4,
-                  padding: "2px 5px", borderRadius: 3,
+                  padding: "2px 5px", borderRadius: CONTROL.radiusSm,
                   border: `1px solid ${t.border}`, background: t.surface,
-                  fontSize: 11, color: t.text, outline: "none",
+                  fontSize: TYPE.caption, color: t.text, outline: "none",
                   fontFamily: "ui-monospace, 'Courier New', monospace",
                 }}
               />
@@ -121,7 +122,7 @@ export default function ColorPicker({
                 marginBottom: 8, paddingBottom: 8,
                 borderBottom: `1px solid ${t.border}`,
               }}>
-                <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 4 }}>
+                <div style={{ fontSize: TYPE.caption, color: t.textMuted, marginBottom: 4 }}>
                   tags
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
@@ -130,9 +131,9 @@ export default function ColorPicker({
                       onClick={() => { onChange(tg.color); close(); }}
                       style={{
                         display: "flex", alignItems: "center", gap: 7, cursor: "pointer",
-                        border: "none", padding: "3px 5px", borderRadius: 4,
+                        border: "none", padding: "3px 5px", borderRadius: CONTROL.radiusSm,
                         background: value === tg.color ? t.accentSoft : "transparent",
-                        fontSize: 13, color: t.text, textAlign: "left", width: "100%",
+                        fontSize: TYPE.label, color: t.text, textAlign: "left", width: "100%",
                       }}>
                       <span style={{
                         width: 11, height: 11, borderRadius: "50%",
@@ -173,9 +174,9 @@ export default function ColorPicker({
                   placeholder="name this color…"
                   maxLength={25}
                   style={{
-                    flex: 1, minWidth: 0, padding: "3px 6px", borderRadius: 4,
+                    flex: 1, minWidth: 0, padding: "3px 6px", borderRadius: CONTROL.radiusSm,
                     border: `1px solid ${t.border}`, background: t.surface,
-                    fontSize: 12, color: t.text, outline: "none",
+                    fontSize: TYPE.caption, color: t.text, outline: "none",
                   }}
                 />
                 <button onClick={submitName}
@@ -183,8 +184,8 @@ export default function ColorPicker({
                   title="Save tag"
                   style={{
                     background: t.accent, color: t.accentText, border: "none",
-                    borderRadius: 4, padding: "3px 9px", cursor: "pointer",
-                    fontSize: 14, fontWeight: 600,
+                    borderRadius: CONTROL.radiusSm, padding: "3px 9px", cursor: "pointer",
+                    fontSize: TYPE.label, fontWeight: 600,
                     opacity: draft.trim() ? 1 : 0.4,
                   }}>+</button>
               </div>
