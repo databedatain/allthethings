@@ -179,29 +179,56 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
           </span>
         )}
 
-        {/* tag badge */}
-        {tagOnTask && (
-          <span style={{
-            fontFamily: fonts.body,
-            fontSize: `${Math.max(10, ui.taskFont - 5)}px`,
-            padding: "1px 7px", borderRadius: "8px",
-            background: rgba(tagOnTask.color, t.dark ? 0.28 : 0.18),
-            color: t.text,
-            border: `1px solid ${rgba(tagOnTask.color, 0.55)}`,
-            flexShrink: 0, whiteSpace: "nowrap",
-          }}>{tagOnTask.name}</span>
-        )}
+        {/* tag pill — merged colour-picker trigger and tag badge */}
+        <ColorPicker
+          value={task.color || null} t={t} colors={colors} allowNone
+          tags={tags} onCreateTag={onCreateTag}
+          onChange={(c) => onSetColor(task.id, c)}
+          renderTrigger={(toggle) => {
+            const pillFont = `${Math.max(10, ui.taskFont - 5)}px`;
+            const padding = "1px 8px";
+            const radius = "9px";
+            if (tagOnTask) {
+              return (
+                <button onClick={toggle} title={`Tag: ${tagOnTask.name}`}
+                  style={{
+                    fontFamily: fonts.body, fontSize: pillFont, padding, borderRadius: radius,
+                    background: rgba(tagOnTask.color, t.dark ? 0.28 : 0.18),
+                    color: t.text,
+                    border: `1px solid ${rgba(tagOnTask.color, 0.55)}`,
+                    cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                  }}>{tagOnTask.name}</button>
+              );
+            }
+            if (task.color) {
+              return (
+                <button onClick={toggle} title="Tag colour (click to rename)"
+                  style={{
+                    fontFamily: fonts.body, fontSize: pillFont, padding, borderRadius: radius,
+                    background: rgba(task.color, t.dark ? 0.28 : 0.18),
+                    color: t.textMuted,
+                    border: `1px solid ${rgba(task.color, 0.55)}`,
+                    cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                  }}>—</button>
+              );
+            }
+            return (
+              <button onClick={toggle} title="Add tag"
+                style={{
+                  fontFamily: fonts.body, fontSize: pillFont, padding, borderRadius: radius,
+                  background: "transparent", color: t.textFaint,
+                  border: `1px dashed ${t.border}`,
+                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                }}>tag</button>
+            );
+          }}
+        />
 
         {/* date */}
         <span style={{
           fontFamily: fonts.heading, fontSize: `${ui.date}px`,
           color: t.textMuted, flexShrink: 0, whiteSpace: "nowrap", marginRight: "4px",
         }}>{formatDate(task.created)}</span>
-
-        {/* per-task colour (with tag picker) */}
-        <ColorPicker value={task.color || null} t={t} colors={colors} size={ui.swatch}
-          allowNone tags={tags} onCreateTag={onCreateTag}
-          onChange={(c) => onSetColor(task.id, c)} />
 
         {/* star toggle */}
         <button onClick={() => onToggleStar(task.id)} title={isStar ? "Unstar" : "Star"}
@@ -226,8 +253,14 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
         {/* delete */}
         <button onClick={() => onDelete(task.id)}
           title={confirmKey === `del:${task.id}` ? "Click again to remove" : "Move to trash"}
-          style={{ ...iconBtn, color: confirmKey === `del:${task.id}` ? t.danger : t.textFaint }}>
-          <IconTrash size={ui.icon} />
+          style={{
+            ...iconBtn,
+            color: confirmKey === `del:${task.id}` ? t.danger : t.textFaint,
+            fontFamily: fonts.body,
+            fontSize: confirmKey === `del:${task.id}` ? "11px" : undefined,
+            fontWeight: confirmKey === `del:${task.id}` ? 700 : undefined,
+          }}>
+          {confirmKey === `del:${task.id}` ? "sure?" : <IconTrash size={ui.icon} />}
         </button>
       </div>
 
@@ -311,7 +344,12 @@ function DoneRow({ task, t, fonts, ui, confirmKey, onRestore, onDelete }) {
           background: "none", border: "none", cursor: "pointer", padding: "3px",
           color: confirmKey === `del:${task.id}` ? t.danger : t.textFaint,
           display: "flex", alignItems: "center",
-        }}><IconTrash size={ui.icon} /></button>
+          fontFamily: fonts.body,
+          fontSize: confirmKey === `del:${task.id}` ? "11px" : undefined,
+          fontWeight: confirmKey === `del:${task.id}` ? 700 : undefined,
+        }}>
+        {confirmKey === `del:${task.id}` ? "sure?" : <IconTrash size={ui.icon} />}
+      </button>
     </div>
   );
 }
@@ -1071,6 +1109,7 @@ export default function BulletJournal() {
                   marginBottom: "4px",
                 }}>
                   <ColorPicker value={tag.color} t={t} colors={paletteColors} size={18}
+                    align="left"
                     onChange={(c) => c && c !== tag.color && setTagColor(tag.color, c)} />
                   <input
                     value={tag.name}

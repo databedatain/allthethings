@@ -1,24 +1,45 @@
 import { useState } from "react";
 import { NEUTRALS, shades, bgShades } from "./theme.js";
 
-/* Inline swatch trigger that opens a palette popover. `value` is a hex string
- * or null ("none"). `colors` is the active palette's base colours.
- * variant="bg" offers mode-appropriate background shades.
- * `tags` (optional) renders a named-tags section at the top; clicking a tag
- * applies its colour. `onCreateTag(color, name)` enables an inline rename
- * affordance when the current colour isn't already a tag. */
+const HEX_RE = /^#?[0-9a-f]{6}$/i;
+
+/* Inline swatch trigger that opens a palette popover.
+ *
+ * Props:
+ *   value, onChange, allowNone, variant, colors, size, t  — see below
+ *   tags?, onCreateTag?  — render a named-tags section + inline name-this-color
+ *   align?               — popover horizontal alignment: "right" (default) or "left"
+ *   renderTrigger?       — `(toggle, open) => node` to replace the default swatch trigger
+ */
 export default function ColorPicker({
-  value, onChange, allowNone, variant, colors, size = 20, t, tags, onCreateTag,
+  value, onChange, allowNone, variant, colors, size = 20, t,
+  tags, onCreateTag, align = "right", renderTrigger,
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  const [hexDraft, setHexDraft] = useState("");
   const none = `linear-gradient(45deg, transparent 47%, ${t.textFaint} 47%, ${t.textFaint} 53%, transparent 53%)`;
   const columnShades = (c) => (variant === "bg" ? bgShades(c, t.dark) : shades(c));
   const namedTags = tags?.filter((tg) => tg.name && tg.name.trim()) || [];
   const tagMatch = tags?.find((tg) => tg.color === value && tg.name?.trim());
   const canName = !!(value && onCreateTag && !tagMatch);
 
-  const close = () => { setOpen(false); setDraft(""); };
+  const close = () => { setOpen(false); setDraft(""); setHexDraft(""); };
+  const toggle = () => setOpen((o) => !o);
+
+  const submitHex = () => {
+    const raw = hexDraft.trim();
+    if (!HEX_RE.test(raw)) return;
+    const norm = "#" + raw.replace("#", "").toLowerCase();
+    onChange(norm);
+    close();
+  };
+
+  const submitName = () => {
+    const name = draft.trim();
+    if (name) onCreateTag(value, name);
+    close();
+  };
 
   const Cell = ({ color }) => {
     const selected = (value || null) === (color || null);
@@ -36,24 +57,24 @@ export default function ColorPicker({
     );
   };
 
-  const submitName = () => {
-    const name = draft.trim();
-    if (name) onCreateTag(value, name);
-    close();
-  };
+  const defaultTrigger = (
+    <button
+      onClick={toggle}
+      title="Pick color"
+      style={{
+        width: size, height: size, borderRadius: 4, padding: 0, cursor: "pointer",
+        border: `1px solid ${t.border}`,
+        background: value || (t.dark ? "#3a3a3f" : "#fff"),
+        backgroundImage: value ? "none" : none,
+      }}
+    />
+  );
+
+  const popoverPos = align === "left" ? { left: 0 } : { right: 0 };
 
   return (
     <span style={{ position: "relative", display: "inline-block", lineHeight: 0 }}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        title="Pick colour"
-        style={{
-          width: size, height: size, borderRadius: 4, padding: 0, cursor: "pointer",
-          border: `1px solid ${t.border}`,
-          background: value || (t.dark ? "#3a3a3f" : "#fff"),
-          backgroundImage: value ? "none" : none,
-        }}
-      />
+      {renderTrigger ? renderTrigger(toggle, open) : defaultTrigger}
       {open && (
         <>
           <div
@@ -61,15 +82,33 @@ export default function ColorPicker({
             style={{ position: "fixed", inset: 0, zIndex: 40 }}
           />
           <div style={{
-            position: "absolute", top: 26, right: 0, zIndex: 41,
+            position: "absolute", top: 26, ...popoverPos, zIndex: 41,
             background: t.popover, border: `1px solid ${t.border}`,
-            borderRadius: 6, padding: 8,
+            borderRadius: 6, padding: 8, minWidth: 200,
             boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
             fontFamily: "inherit",
           }}>
-            <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
+            <div style={{ display: "flex", gap: 4, marginBottom: 6, alignItems: "center" }}>
               {allowNone && <Cell color={null} />}
               {NEUTRALS.map((c) => <Cell key={c} color={c} />)}
+              <input
+                value={hexDraft}
+                onChange={(e) => setHexDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitHex();
+                  if (e.key === "Escape") close();
+                }}
+                onBlur={submitHex}
+                placeholder="#hex"
+                spellCheck={false}
+                style={{
+                  flex: 1, minWidth: 0, marginLeft: 6,
+                  padding: "2px 6px", borderRadius: 3,
+                  border: `1px solid ${t.border}`, background: t.surface,
+                  fontSize: 11, color: t.text, outline: "none",
+                  fontFamily: "ui-monospace, 'Courier New', monospace",
+                }}
+              />
             </div>
             {namedTags.length > 0 && (
               <div style={{
@@ -125,7 +164,7 @@ export default function ColorPicker({
                     if (e.key === "Enter") submitName();
                     if (e.key === "Escape") close();
                   }}
-                  placeholder="name this colour…"
+                  placeholder="name this color…"
                   style={{
                     flex: 1, minWidth: 0, padding: "3px 6px", borderRadius: 4,
                     border: `1px solid ${t.border}`, background: t.surface,
