@@ -9,6 +9,7 @@ import {
   weekParts,
   DENSITIES,
   getDensity,
+  MAX_TAGS,
 } from "./weeks.js";
 import {
   loadFont,
@@ -78,23 +79,46 @@ const IconGrip = ({ size = 17 }) => (
     <circle cx="3.5" cy="14" r="1.5"/><circle cx="7.5" cy="14" r="1.5"/>
   </svg>
 );
+const IconSun = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2"/>
+    <g stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <line x1="12" y1="2.5" x2="12" y2="5"/>
+      <line x1="12" y1="19" x2="12" y2="21.5"/>
+      <line x1="2.5" y1="12" x2="5" y2="12"/>
+      <line x1="19" y1="12" x2="21.5" y2="12"/>
+      <line x1="4.7" y1="4.7" x2="6.4" y2="6.4"/>
+      <line x1="17.6" y1="17.6" x2="19.3" y2="19.3"/>
+      <line x1="4.7" y1="19.3" x2="6.4" y2="17.6"/>
+      <line x1="17.6" y1="6.4" x2="19.3" y2="4.7"/>
+    </g>
+  </svg>
+);
+const IconMoon = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <path d="M20 14.5A8 8 0 119.5 4 6 6 0 0020 14.5z"
+      stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+  </svg>
+);
 
 /* ─── task row ─── */
-function TaskRow({ task, t, fonts, colors, drag, isOver, ui, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onUpdateQuestion, isQExpanded, onToggleQ }) {
+function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onUpdateQuestion, isQExpanded, onToggleQ }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.text);
   const isHold = task.status === "hold";
   const isStar = !!task.starred;
   const hasQ = task.questionWho || task.questionText;
+  const tagOnTask = tags?.find((tg) => tg.color === task.color && tg.name?.trim());
 
+  // tag (task.color) or hold owns the row tint; star is just the bold outline
   const tint = task.color
     ? rgba(task.color, t.dark ? 0.22 : 0.16)
-    : isStar ? t.starTint : isHold ? t.holdTint : t.surface;
+    : isHold ? t.holdTint : t.surface;
   const border = task.color
     ? `1px solid ${rgba(task.color, 0.5)}`
-    : isStar ? `1px solid ${t.starBorder}`
     : isHold ? `1px dashed ${t.holdBorder}`
     : `1px solid ${t.border}`;
+  const starOutline = isStar ? `inset 0 0 0 2px ${t.star}` : undefined;
 
   const commit = () => {
     const v = draft.trim();
@@ -121,6 +145,7 @@ function TaskRow({ task, t, fonts, colors, drag, isOver, ui, confirmKey, onEdit,
           padding: `${ui.padY}px ${ui.padX}px`,
           borderRadius: isQExpanded ? "6px 6px 0 0" : "6px",
           background: tint, border,
+          boxShadow: starOutline,
           borderBottom: isQExpanded ? "none" : undefined,
           borderTop: isOver ? `2px solid ${t.accent}` : undefined,
           transition: "background 0.15s ease",
@@ -175,15 +200,56 @@ function TaskRow({ task, t, fonts, colors, drag, isOver, ui, confirmKey, onEdit,
           </span>
         )}
 
+        {/* tag pill — merged colour-picker trigger and tag badge */}
+        <ColorPicker
+          value={task.color || null} t={t} colors={colors} allowNone
+          tags={tags} onCreateTag={onCreateTag}
+          onChange={(c) => onSetColor(task.id, c)}
+          renderTrigger={(toggle) => {
+            const pillFont = `${Math.max(10, ui.taskFont - 5)}px`;
+            const padding = "1px 8px";
+            const radius = "9px";
+            if (tagOnTask) {
+              return (
+                <button onClick={toggle} title={`Tag: ${tagOnTask.name}`}
+                  style={{
+                    fontFamily: fonts.body, fontSize: pillFont, padding, borderRadius: radius,
+                    background: rgba(tagOnTask.color, t.dark ? 0.28 : 0.18),
+                    color: t.text,
+                    border: `1px solid ${rgba(tagOnTask.color, 0.55)}`,
+                    cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                  }}>{tagOnTask.name}</button>
+              );
+            }
+            if (task.color) {
+              return (
+                <button onClick={toggle} title="Tag colour (click to rename)"
+                  style={{
+                    fontFamily: fonts.body, fontSize: pillFont, padding, borderRadius: radius,
+                    background: rgba(task.color, t.dark ? 0.28 : 0.18),
+                    color: t.textMuted,
+                    border: `1px solid ${rgba(task.color, 0.55)}`,
+                    cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                  }}>—</button>
+              );
+            }
+            return (
+              <button onClick={toggle} title="Add tag"
+                style={{
+                  fontFamily: fonts.body, fontSize: pillFont, padding, borderRadius: radius,
+                  background: "transparent", color: t.textFaint,
+                  border: `1px dashed ${t.border}`,
+                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                }}>tag</button>
+            );
+          }}
+        />
+
         {/* date */}
         <span style={{
           fontFamily: fonts.heading, fontSize: `${ui.date}px`,
           color: t.textMuted, flexShrink: 0, whiteSpace: "nowrap", marginRight: "4px",
         }}>{formatDate(task.created)}</span>
-
-        {/* per-task colour */}
-        <ColorPicker value={task.color || null} t={t} colors={colors} size={ui.swatch} allowNone
-          onChange={(c) => onSetColor(task.id, c)} />
 
         {/* star toggle */}
         <button onClick={() => onToggleStar(task.id)} title={isStar ? "Unstar" : "Star"}
@@ -208,8 +274,14 @@ function TaskRow({ task, t, fonts, colors, drag, isOver, ui, confirmKey, onEdit,
         {/* delete */}
         <button onClick={() => onDelete(task.id)}
           title={confirmKey === `del:${task.id}` ? "Click again to remove" : "Move to trash"}
-          style={{ ...iconBtn, color: confirmKey === `del:${task.id}` ? t.danger : t.textFaint }}>
-          <IconTrash size={ui.icon} />
+          style={{
+            ...iconBtn,
+            color: confirmKey === `del:${task.id}` ? t.danger : t.textFaint,
+            fontFamily: fonts.body,
+            fontSize: confirmKey === `del:${task.id}` ? "11px" : undefined,
+            fontWeight: confirmKey === `del:${task.id}` ? 700 : undefined,
+          }}>
+          {confirmKey === `del:${task.id}` ? "sure?" : <IconTrash size={ui.icon} />}
         </button>
       </div>
 
@@ -293,7 +365,12 @@ function DoneRow({ task, t, fonts, ui, confirmKey, onRestore, onDelete }) {
           background: "none", border: "none", cursor: "pointer", padding: "3px",
           color: confirmKey === `del:${task.id}` ? t.danger : t.textFaint,
           display: "flex", alignItems: "center",
-        }}><IconTrash size={ui.icon} /></button>
+          fontFamily: fonts.body,
+          fontSize: confirmKey === `del:${task.id}` ? "11px" : undefined,
+          fontWeight: confirmKey === `del:${task.id}` ? 700 : undefined,
+        }}>
+        {confirmKey === `del:${task.id}` ? "sure?" : <IconTrash size={ui.icon} />}
+      </button>
     </div>
   );
 }
@@ -303,10 +380,10 @@ function PaletteSelect({ t, fonts, value, onChange }) {
   const [open, setOpen] = useState(false);
   const current = getPalette(value);
   const dots = (cols) => (
-    <span style={{ display: "flex", gap: "2px" }}>
+    <span style={{ display: "flex", gap: "2px", flexShrink: 0 }}>
       {cols.map((c, i) => (
         <span key={i} style={{
-          width: "10px", height: "10px", borderRadius: "2px", background: c,
+          width: "8px", height: "8px", borderRadius: "2px", background: c,
         }} />
       ))}
     </span>
@@ -391,6 +468,189 @@ function FontSelect({ value, onChange, hasCustom, t }) {
   );
 }
 
+/* ─── add-task row (looks like a task row, with a + commit and inline controls) ─── */
+function AddTaskRow({ t, fonts, colors, tags, ui, draft, onChange, onCommit, onReset, onCreateTag, inputRef, dragEnabled }) {
+  const isHold = draft.status === "hold";
+  const isStar = !!draft.starred;
+  const hasQ = draft.questionWho || draft.questionText;
+  const tagOnDraft = tags?.find((tg) => tg.color === draft.color && tg.name?.trim());
+  const hasContent = !!(draft.text || draft.color || draft.starred ||
+    draft.status === "hold" || draft.questionWho || draft.questionText || draft.showQ);
+
+  const tint = draft.color
+    ? rgba(draft.color, t.dark ? 0.22 : 0.16)
+    : isHold ? t.holdTint : t.surface;
+  const border = draft.color
+    ? `1px solid ${rgba(draft.color, 0.5)}`
+    : isHold ? `1px dashed ${t.holdBorder}`
+    : `1px dashed ${t.border}`;
+  const starOutline = isStar ? `inset 0 0 0 2px ${t.star}` : undefined;
+
+  const iconBtn = {
+    background: "none", border: "none", cursor: "pointer",
+    padding: `${ui.btnPad}px`, display: "flex", alignItems: "center",
+  };
+  const pillFont = `${Math.max(10, ui.taskFont - 5)}px`;
+  const pillPad = "1px 8px";
+  const pillRadius = "9px";
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: "4px",
+        padding: `${ui.padY}px ${ui.padX}px`,
+        borderRadius: hasQ && draft.showQ ? "6px 6px 0 0" : "6px",
+        background: tint, border,
+        boxShadow: starOutline,
+        borderBottom: hasQ && draft.showQ ? "none" : undefined,
+      }}>
+        {/* grip-column spacer for visual alignment with draggable task rows */}
+        {dragEnabled && (
+          <span style={{
+            width: Math.round(ui.grip * 0.647), height: ui.grip,
+            flexShrink: 0, visibility: "hidden",
+          }} />
+        )}
+
+        {/* + commit */}
+        <button onClick={onCommit} title="Add task"
+          style={{
+            width: ui.checkbox, height: ui.checkbox, borderRadius: 4, cursor: "pointer",
+            border: "none", background: t.accent, color: t.accentText,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0, padding: 0,
+          }}>
+          <IconPlus size={ui.doneCheck} />
+        </button>
+
+        {/* text input */}
+        <input ref={inputRef} value={draft.text}
+          onChange={(e) => onChange({ text: e.target.value })}
+          onKeyDown={(e) => { if (e.key === "Enter") onCommit(); }}
+          placeholder="add a task…"
+          style={{
+            flex: 1, fontFamily: fonts.body, fontSize: `${ui.taskFont}px`,
+            background: "transparent", border: "none", outline: "none",
+            color: isHold ? t.holdText : t.text,
+            fontStyle: isHold ? "italic" : "normal",
+            marginLeft: "4px", padding: "2px 5px",
+          }}
+        />
+
+        {/* tag pill */}
+        <ColorPicker
+          value={draft.color || null} t={t} colors={colors} allowNone
+          tags={tags} onCreateTag={onCreateTag}
+          onChange={(c) => onChange({ color: c })}
+          renderTrigger={(toggle) => {
+            if (tagOnDraft) return (
+              <button onClick={toggle} title={`Tag: ${tagOnDraft.name}`}
+                style={{
+                  fontFamily: fonts.body, fontSize: pillFont, padding: pillPad, borderRadius: pillRadius,
+                  background: rgba(tagOnDraft.color, t.dark ? 0.28 : 0.18),
+                  color: t.text,
+                  border: `1px solid ${rgba(tagOnDraft.color, 0.55)}`,
+                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                }}>{tagOnDraft.name}</button>
+            );
+            if (draft.color) return (
+              <button onClick={toggle} title="Tag colour (click to rename)"
+                style={{
+                  fontFamily: fonts.body, fontSize: pillFont, padding: pillPad, borderRadius: pillRadius,
+                  background: rgba(draft.color, t.dark ? 0.28 : 0.18),
+                  color: t.textMuted,
+                  border: `1px solid ${rgba(draft.color, 0.55)}`,
+                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                }}>—</button>
+            );
+            return (
+              <button onClick={toggle} title="Add tag"
+                style={{
+                  fontFamily: fonts.body, fontSize: pillFont, padding: pillPad, borderRadius: pillRadius,
+                  background: "transparent", color: t.textFaint,
+                  border: `1px dashed ${t.border}`,
+                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                }}>tag</button>
+            );
+          }}
+        />
+
+        {/* star */}
+        <button onClick={() => onChange({ starred: !isStar })}
+          title={isStar ? "Unstar" : "Star"}
+          style={{ ...iconBtn, color: isStar ? t.star : t.textFaint }}>
+          <IconStar filled={isStar} size={ui.star} />
+        </button>
+
+        {/* question */}
+        <button onClick={() => onChange({ showQ: !draft.showQ })}
+          title={draft.showQ ? "Hide question" : "Add question"}
+          style={{ ...iconBtn, color: hasQ ? t.question : t.textFaint }}>
+          <IconQuestion size={ui.icon} />
+        </button>
+
+        {/* hold */}
+        <button onClick={() => onChange({ status: isHold ? "active" : "hold" })}
+          title={isHold ? "Resume" : "Put on hold"}
+          style={{ ...iconBtn, color: isHold ? t.holdText : t.textFaint }}>
+          {isHold ? <IconUndo size={ui.icon} /> : <IconPause size={ui.icon} />}
+        </button>
+
+        {/* clear-draft (aligns with the trash slot in task rows) */}
+        <button onClick={onReset} title="Clear"
+          style={{
+            ...iconBtn, color: t.textFaint,
+            visibility: hasContent ? "visible" : "hidden",
+          }}>
+          <IconTrash size={ui.icon} />
+        </button>
+      </div>
+
+      {draft.showQ && (
+        <div style={{
+          padding: "9px 12px 11px", borderRadius: "0 0 6px 6px",
+          background: t.accentSoft,
+          border: `1px solid ${t.border}`, borderTop: "none",
+          display: "flex", flexDirection: "column", gap: "7px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <label style={{
+              fontFamily: fonts.heading, fontSize: "16px",
+              color: t.question, flexShrink: 0, width: "40px",
+            }}>who</label>
+            <input value={draft.questionWho}
+              onChange={(e) => onChange({ questionWho: e.target.value })}
+              placeholder="person or team…"
+              style={{
+                flex: 1, padding: "6px 9px", borderRadius: "4px",
+                border: `1px solid ${t.border}`, background: t.surface,
+                fontFamily: fonts.body, fontSize: "15px",
+                outline: "none", color: t.text,
+              }}/>
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <label style={{
+              fontFamily: fonts.heading, fontSize: "16px",
+              color: t.question, flexShrink: 0, width: "40px", paddingTop: "4px",
+            }}>ask</label>
+            <textarea value={draft.questionText}
+              onChange={(e) => onChange({ questionText: e.target.value })}
+              placeholder="what do you need to find out…"
+              rows={2}
+              style={{
+                flex: 1, padding: "6px 9px", borderRadius: "4px",
+                border: `1px solid ${t.border}`, background: t.surface,
+                fontFamily: fonts.body, fontSize: "15px",
+                outline: "none", color: t.text, resize: "vertical",
+                lineHeight: 1.5, boxSizing: "border-box",
+              }}/>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── collapsible section header ─── */
 function SectionToggle({ t, fonts, open, onToggle, label, extra }) {
   return (
@@ -414,9 +674,12 @@ function SectionToggle({ t, fonts, open, onToggle, label, extra }) {
 /* ─── main ─── */
 export default function BulletJournal() {
   const [data, setData] = useState(null);
-  const [input, setInput] = useState("");
+  const [draft, setDraft] = useState({
+    text: "", color: null, starred: false, status: "active",
+    questionWho: "", questionText: "", showQ: false,
+  });
   const [query, setQuery] = useState("");
-  const [showDone, setShowDone] = useState(false);
+  const [doneOpen, setDoneOpen] = useState(() => new Map());
   const [showHold, setShowHold] = useState(true);
   const [expandedQ, setExpandedQ] = useState(() => new Set());
   const [loading, setLoading] = useState(true);
@@ -494,10 +757,15 @@ export default function BulletJournal() {
     });
   }, [save]);
 
-  // keyboard undo / redo (ignored while typing in a field)
+  // keyboard undo / redo (ignored while typing in a field) + ESC to close panels
   useEffect(() => {
     const onKey = (e) => {
       const tag = (e.target.tagName || "").toLowerCase();
+      if (e.key === "Escape") {
+        if (settingsOpen) { setSettingsOpen(false); e.preventDefault(); }
+        else if (trashOpen) { setTrashOpen(false); e.preventDefault(); }
+        return;
+      }
       if (tag === "input" || tag === "textarea") return;
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === "z") {
@@ -510,7 +778,7 @@ export default function BulletJournal() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo]);
+  }, [undo, redo, settingsOpen, trashOpen]);
 
   const theme = data ? buildTheme(data.theme) : buildTheme({});
 
@@ -519,22 +787,28 @@ export default function BulletJournal() {
     document.body.style.background = theme.bg;
   }, [theme.bg]);
 
-  const addTask = () => {
-    const text = input.trim();
+  const updateDraft = (patch) => setDraft((d) => ({ ...d, ...patch }));
+  const commitDraft = () => {
+    const text = draft.text.trim();
     if (!text) return;
     const cur = currentWeekKey();
+    const { color, starred, status, questionWho, questionText } = draft;
     update((d) => {
       const maxOrder = d.tasks.reduce((m, x) => Math.max(m, x.order ?? 0), 0);
       return {
         ...d,
         tasks: [...d.tasks, {
-          id: d.nextId, text, status: "active", created: Date.now(),
-          week: cur, starred: false, color: null, order: maxOrder + 1,
+          id: d.nextId, text, status, created: Date.now(),
+          week: cur, starred, color,
+          ...(questionWho ? { questionWho } : {}),
+          ...(questionText ? { questionText } : {}),
+          order: maxOrder + 1,
         }],
         nextId: d.nextId + 1,
       };
     });
-    setInput("");
+    setDraft({ text: "", color: null, starred: false, status: "active",
+      questionWho: "", questionText: "", showQ: false });
     inputRef.current?.focus();
   };
 
@@ -651,6 +925,40 @@ export default function BulletJournal() {
   const setHeadingFont = (id) => update((d) => ({ ...d, headingFont: id }));
   const setBodyFont = (id) => update((d) => ({ ...d, bodyFont: id }));
 
+  // tag editor: add, rename, recolor (propagating to tagged tasks), remove
+  const addTag = () =>
+    update((d) => {
+      if ((d.tags?.length || 0) >= MAX_TAGS) return d;
+      const used = new Set((d.tags || []).map((t) => t.color));
+      const pal = getPalette(d.palette).colors;
+      const color = pal.find((c) => !used.has(c)) || pal[0];
+      return { ...d, tags: [...(d.tags || []), { color, name: "" }] };
+    });
+  const removeTag = (color) =>
+    update((d) => ({ ...d, tags: (d.tags || []).filter((t) => t.color !== color) }));
+  const setTagName = (color, name) =>
+    update((d) => ({
+      ...d,
+      tags: (d.tags || []).map((t) => (t.color === color ? { ...t, name } : t)),
+    }));
+  const setTagColor = (oldColor, newColor) =>
+    update((d) => ({
+      ...d,
+      tags: (d.tags || []).map((t) =>
+        t.color === oldColor ? { ...t, color: newColor } : t
+      ),
+      tasks: d.tasks.map((x) =>
+        x.color === oldColor ? { ...x, color: newColor } : x
+      ),
+    }));
+  // inline naming from the per-task colour popover: creates a new tag
+  const createTagInline = (color, name) =>
+    update((d) => {
+      if ((d.tags?.length || 0) >= MAX_TAGS) return d;
+      if ((d.tags || []).some((t) => t.color === color)) return d;
+      return { ...d, tags: [...(d.tags || []), { color, name }] };
+    });
+
   const loadSamples = () => update((d) => rollIncompletes(withSampleWeeks(d)));
 
   const toggleQ = (id) =>
@@ -723,8 +1031,19 @@ export default function BulletJournal() {
   const cur = currentWeekKey();
   const isEverything = selectedWeek === "everything";
   const isCurrent = selectedWeek === cur;
+  const isPast = !isCurrent && !isEverything;
   const canAdd = isCurrent || isEverything;
   const searching = query.trim().length > 0;
+
+  // done section: open by default in past weeks, closed elsewhere; manual
+  // toggles per week override the default
+  const showDone = doneOpen.has(selectedWeek) ? doneOpen.get(selectedWeek) : isPast;
+  const toggleShowDone = () =>
+    setDoneOpen((prev) => {
+      const next = new Map(prev);
+      next.set(selectedWeek, !showDone);
+      return next;
+    });
 
   const weekSet = new Set(data.tasks.map((x) => x.week));
   weekSet.add(cur);
@@ -837,25 +1156,17 @@ export default function BulletJournal() {
     fontWeight: active ? 600 : 400,
   });
 
-  const addBox = canAdd && (
-    <div style={{ display: "flex", gap: "6px" }}>
-      <input ref={inputRef} value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && addTask()}
-        placeholder="add a task…"
-        style={{
-          width: "224px", height: "38px", padding: "0 12px", borderRadius: "6px",
-          border: `1px solid ${t.border}`, background: t.surface,
-          fontFamily: fonts.body, fontSize: "15px",
-          outline: "none", color: t.text, boxSizing: "border-box",
-        }}
-      />
-      <button onClick={addTask} style={{
-        width: "38px", height: "38px", borderRadius: "6px",
-        border: "none", background: t.accent, color: t.accentText,
-        cursor: "pointer", display: "flex", alignItems: "center",
-        justifyContent: "center", flexShrink: 0,
-      }}><IconPlus /></button>
+  const sortBar = (activeTasks.length + holdTasks.length) > 1 && (
+    <div style={{ display: "flex", gap: "10px", alignItems: "baseline" }}>
+      <button onClick={() => setSortMode("custom")}
+        style={sortBtn(data.sortMode === "custom")}>
+        ⠿ custom
+      </button>
+      <button onClick={clickDateSort}
+        title="Sort by date — click again to flip"
+        style={sortBtn(data.sortMode === "date")}>
+        {data.sortOrder === "oldest" ? "↑ oldest first" : "↓ newest first"}
+      </button>
     </div>
   );
 
@@ -873,43 +1184,48 @@ export default function BulletJournal() {
     <div className="bj-root">
       {/* ─── sidebar ─── */}
       <aside className="bj-sidebar">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="search…"
-          style={{
-            width: "100%", padding: "7px 10px", borderRadius: "6px",
-            border: `1px solid ${t.border}`, background: t.surface,
-            fontFamily: fonts.body, fontSize: "14px",
-            outline: "none", color: t.text, marginBottom: "8px",
-            boxSizing: "border-box", textAlign: "center",
-          }}
-        />
-        <button style={navBtn(isEverything && !searching)}
-          onClick={() => goToWeek("everything")}>
-          ★ everything
-        </button>
-        <div style={divider} />
-        {weeksDesc.map((wk) => {
-          const active = selectedWeek === wk && !searching;
-          if (wk === cur) {
+        <div className="bj-sidebar-top">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="search…"
+            style={{
+              width: "100%", padding: "7px 10px", borderRadius: "6px",
+              border: `1px solid ${t.border}`, background: t.surface,
+              fontFamily: fonts.body, fontSize: "14px",
+              outline: "none", color: t.text, marginBottom: "8px",
+              boxSizing: "border-box", textAlign: "center",
+            }}
+          />
+          <button style={navBtn(isEverything && !searching)}
+            onClick={() => goToWeek("everything")}>
+            ★ everything
+          </button>
+          <div style={divider} />
+        </div>
+        <div className="bj-sidebar-weeks">
+          {weeksDesc.map((wk) => {
+            const active = selectedWeek === wk && !searching;
+            if (wk === cur) {
+              return (
+                <button key={wk} style={navBtn(active)} onClick={() => goToWeek(wk)}>
+                  this week
+                </button>
+              );
+            }
+            const p = weekParts(wk);
             return (
-              <button key={wk} style={navBtn(active)} onClick={() => goToWeek(wk)}>
-                this week
+              <button key={wk} onClick={() => goToWeek(wk)}
+                style={{ ...navBtn(active), display: "flex", alignItems: "baseline" }}>
+                <span style={{ flex: 1, textAlign: "right" }}>{p.left}</span>
+                <span style={{ padding: "0 5px", flexShrink: 0 }}>–</span>
+                <span style={{ flex: 1, textAlign: "left" }}>{p.right}</span>
               </button>
             );
-          }
-          const p = weekParts(wk);
-          return (
-            <button key={wk} onClick={() => goToWeek(wk)}
-              style={{ ...navBtn(active), display: "flex", alignItems: "baseline" }}>
-              <span style={{ flex: 1, textAlign: "right" }}>{p.left}</span>
-              <span style={{ padding: "0 5px", flexShrink: 0 }}>–</span>
-              <span style={{ flex: 1, textAlign: "left" }}>{p.right}</span>
-            </button>
-          );
-        })}
-        <div style={divider} />
+          })}
+        </div>
+        <div className="bj-sidebar-bottom">
+          <div style={divider} />
 
         {/* settings panel */}
         <button onClick={() => setSettingsOpen((o) => !o)} style={panelToggle}>
@@ -922,37 +1238,41 @@ export default function BulletJournal() {
         </button>
         {settingsOpen && (
           <div style={{
-            padding: "8px 4px 4px", display: "flex",
-            flexDirection: "column", gap: "12px",
+            padding: "8px 4px 4px",
+            display: "flex", flexDirection: "column", gap: "12px",
           }}>
-            {/* light / dark */}
-            <div>
-              <div style={{ ...settingRow, marginBottom: "4px" }}>appearance</div>
-              <div style={{ display: "flex" }}>
-                <button style={{ ...segBtn(!t.dark), borderRadius: "5px 0 0 5px" }}
-                  onClick={() => setThemeKey("mode", "light")}>light</button>
-                <button style={{ ...segBtn(t.dark), borderRadius: "0 5px 5px 0", borderLeft: "none" }}
-                  onClick={() => setThemeKey("mode", "dark")}>dark</button>
+            {/* appearance + palette side by side */}
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              <button
+                onClick={() => setThemeKey("mode", t.dark ? "light" : "dark")}
+                title={t.dark ? "Switch to light mode" : "Switch to dark mode"}
+                style={{
+                  width: 20, height: 20, flexShrink: 0,
+                  cursor: "pointer", padding: 0,
+                  border: `1px solid ${t.border}`, background: t.surface,
+                  borderRadius: 4,
+                  color: t.textMuted, display: "flex",
+                  alignItems: "center", justifyContent: "center",
+                }}>
+                {t.dark ? <IconSun size={13} /> : <IconMoon size={13} />}
+              </button>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <PaletteSelect t={t} fonts={fonts} value={data.palette}
+                  onChange={selectPalette} />
               </div>
-            </div>
-            {/* palette */}
-            <div>
-              <div style={{ ...settingRow, marginBottom: "4px" }}>palette</div>
-              <PaletteSelect t={t} fonts={fonts} value={data.palette}
-                onChange={selectPalette} />
             </div>
             {/* theme presets for the active palette */}
             <div>
               <div style={{ ...settingRow, marginBottom: "4px" }}>theme</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px" }}>
                 {PRESETS.filter((p) => p.palette === data.palette).map((p) => (
                   <button key={p.id} onClick={() => applyPreset(p)} title={p.name}
                     style={{
-                      width: "96px", display: "flex", alignItems: "center",
-                      justifyContent: "flex-start", gap: "6px",
+                      display: "flex", alignItems: "center",
+                      justifyContent: "flex-start", gap: "5px",
                       cursor: "pointer", borderRadius: "5px",
                       border: `1px solid ${t.border}`, background: t.surface,
-                      padding: "4px 8px", fontFamily: fonts.body,
+                      padding: "4px 6px", fontFamily: fonts.body,
                       fontSize: "12px", color: t.textMuted,
                     }}>
                     <span style={{ display: "flex", gap: "3px", flexShrink: 0 }}>
@@ -969,28 +1289,79 @@ export default function BulletJournal() {
                 ))}
               </div>
             </div>
-            {/* colour pickers */}
-            <div style={settingRow}>
-              <span>UI Highlight</span>
-              <ColorPicker value={data.theme.highlight} t={t} colors={paletteColors}
-                onChange={(c) => c && setThemeKey("highlight", c)} />
+            {/* colour pickers in a 2x2 grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
+              columnGap: "10px", rowGap: "8px" }}>
+              <div style={settingRow}>
+                <span>UI Highlight</span>
+                <ColorPicker value={data.theme.highlight} t={t} colors={paletteColors}
+                  align="left"
+                  onChange={(c) => c && setThemeKey("highlight", c)} />
+              </div>
+              <div style={settingRow}>
+                <span>Star Color</span>
+                <ColorPicker value={data.theme.star} t={t} colors={paletteColors}
+                  align="left"
+                  onChange={(c) => c && setThemeKey("star", c)} />
+              </div>
+              <div style={settingRow}>
+                <span>Hold Color</span>
+                <ColorPicker value={data.theme.hold} t={t} colors={paletteColors}
+                  align="left"
+                  onChange={(c) => c && setThemeKey("hold", c)} />
+              </div>
+              <div style={settingRow}>
+                <span>Background</span>
+                <ColorPicker
+                  value={(t.dark ? data.theme.bgDark : data.theme.bgLight) || null}
+                  t={t} colors={paletteColors} allowNone variant="bg"
+                  align="left"
+                  onChange={(c) => setThemeKey(t.dark ? "bgDark" : "bgLight", c)} />
+              </div>
             </div>
-            <div style={settingRow}>
-              <span>Star Color</span>
-              <ColorPicker value={data.theme.star} t={t} colors={paletteColors}
-                onChange={(c) => c && setThemeKey("star", c)} />
-            </div>
-            <div style={settingRow}>
-              <span>Hold Color</span>
-              <ColorPicker value={data.theme.hold} t={t} colors={paletteColors}
-                onChange={(c) => c && setThemeKey("hold", c)} />
-            </div>
-            <div style={settingRow}>
-              <span>Background · {t.mode}</span>
-              <ColorPicker
-                value={(t.dark ? data.theme.bgDark : data.theme.bgLight) || null}
-                t={t} colors={paletteColors} allowNone variant="bg"
-                onChange={(c) => setThemeKey(t.dark ? "bgDark" : "bgLight", c)} />
+            {/* tags */}
+            <div>
+              <div style={{ ...settingRow, marginBottom: "4px" }}>
+                <span>tags ({(data.tags || []).length}/{MAX_TAGS})</span>
+              </div>
+              {(data.tags || []).map((tag) => (
+                <div key={tag.color} style={{
+                  display: "flex", alignItems: "center", gap: "6px",
+                  marginBottom: "4px",
+                }}>
+                  <ColorPicker value={tag.color} t={t} colors={paletteColors} size={18}
+                    align="left"
+                    onChange={(c) => c && c !== tag.color && setTagColor(tag.color, c)} />
+                  <input
+                    value={tag.name}
+                    onChange={(e) => setTagName(tag.color, e.target.value)}
+                    placeholder="name…"
+                    maxLength={25}
+                    style={{
+                      flex: 1, minWidth: 0, padding: "3px 7px", borderRadius: 4,
+                      border: `1px solid ${t.border}`, background: t.surface,
+                      fontFamily: fonts.body, fontSize: 13, color: t.text, outline: "none",
+                    }}
+                  />
+                  <button
+                    onClick={() => armOrRun(`tag:${tag.color}`, () => removeTag(tag.color))}
+                    title={confirmKey === `tag:${tag.color}` ? "Click again to remove" : "Remove tag"}
+                    style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      padding: 0, color: t.danger,
+                      fontFamily: fonts.body,
+                      fontSize: confirmKey === `tag:${tag.color}` ? 11 : 13,
+                      fontWeight: confirmKey === `tag:${tag.color}` ? 700 : 400,
+                    }}>
+                    {confirmKey === `tag:${tag.color}` ? "sure?" : "✕"}
+                  </button>
+                </div>
+              ))}
+              {(data.tags || []).length < MAX_TAGS && (
+                <button onClick={addTag} style={{ ...linkBtn }}>
+                  + add tag
+                </button>
+              )}
             </div>
             {/* spacing density */}
             <div>
@@ -1100,6 +1471,7 @@ export default function BulletJournal() {
             )}
           </div>
         )}
+        </div>
       </aside>
 
       {/* ─── main ─── */}
@@ -1191,47 +1563,41 @@ export default function BulletJournal() {
                   </span>
                 </h1>
               )}
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 {undoBtn("Undo", undo)}
                 {undoBtn("Redo", redo)}
-                {addBox}
+                {sortBar}
               </div>
             </div>
-
-            {/* sort control */}
-            {(activeTasks.length + holdTasks.length) > 1 && (
-              <div style={{ display: "flex", justifyContent: "flex-end",
-                gap: "14px", marginBottom: "7px" }}>
-                <button onClick={() => setSortMode("custom")}
-                  style={sortBtn(data.sortMode === "custom")}>
-                  ⠿ custom
-                </button>
-                <button onClick={clickDateSort}
-                  title="Sort by date — click again to flip"
-                  style={sortBtn(data.sortMode === "date")}>
-                  {data.sortOrder === "oldest" ? "↑ oldest first" : "↓ newest first"}
-                </button>
-              </div>
-            )}
 
             {/* active tasks */}
             <div style={{ display: "flex", flexDirection: "column",
               gap: `${ui.taskGap}px`, marginBottom: "16px" }}>
-              {activeTasks.length === 0 && holdTasks.length === 0 && (
+              {canAdd && (
+                <AddTaskRow t={t} fonts={fonts} colors={paletteColors} tags={data.tags}
+                  ui={ui} draft={draft} onChange={updateDraft} onCommit={commitDraft}
+                  onReset={() => setDraft({ text: "", color: null, starred: false,
+                    status: "active", questionWho: "", questionText: "", showQ: false })}
+                  onCreateTag={createTagInline} inputRef={inputRef}
+                  dragEnabled={dragEnabled}/>
+              )}
+              {activeTasks.length === 0 && holdTasks.length === 0 && !canAdd && (
                 <div style={{
                   textAlign: "center", padding: "30px 0",
                   fontFamily: fonts.heading, fontSize: "21px", color: t.textFaint,
                 }}>
-                  {canAdd ? "nothing here yet — add a task above" : "no open tasks this week"}
+                  {(data.rolloutCounts?.[selectedWeek] || 0) > 0
+                    ? `${data.rolloutCounts[selectedWeek]} task${data.rolloutCounts[selectedWeek] === 1 ? "" : "s"} rolled forward`
+                    : "no open tasks this week"}
                 </div>
               )}
               {activeTasks.map((x) => (
-                <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} drag={drag}
+                <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} tags={data.tags} drag={drag}
                   ui={ui}
                   isOver={dragEnabled && overId === x.id && dragId !== x.id}
                   onEdit={editTask} onSetColor={setTaskColor}
                   onStatusChange={changeStatus} onDelete={armedDelete}
-                  onToggleStar={toggleStar} onUpdateQuestion={updateQuestion}
+                  onToggleStar={toggleStar} onCreateTag={createTagInline} onUpdateQuestion={updateQuestion}
                   confirmKey={confirmKey}
                   isQExpanded={expandedQ.has(x.id)} onToggleQ={toggleQ}/>
               ))}
@@ -1247,12 +1613,12 @@ export default function BulletJournal() {
                   <div style={{ display: "flex", flexDirection: "column",
                     gap: `${ui.taskGap}px` }}>
                     {holdTasks.map((x) => (
-                      <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} drag={drag}
+                      <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} tags={data.tags} drag={drag}
                         ui={ui}
                         isOver={dragEnabled && overId === x.id && dragId !== x.id}
                         onEdit={editTask} onSetColor={setTaskColor}
                         onStatusChange={changeStatus} onDelete={armedDelete}
-                        onToggleStar={toggleStar} onUpdateQuestion={updateQuestion}
+                        onToggleStar={toggleStar} onCreateTag={createTagInline} onUpdateQuestion={updateQuestion}
                         confirmKey={confirmKey}
                         isQExpanded={expandedQ.has(x.id)} onToggleQ={toggleQ}/>
                     ))}
@@ -1265,7 +1631,7 @@ export default function BulletJournal() {
             {doneTasks.length > 0 && (
               <div style={{ marginBottom: "16px" }}>
                 <SectionToggle t={t} fonts={fonts} open={showDone}
-                  onToggle={() => setShowDone(!showDone)}
+                  onToggle={toggleShowDone}
                   label={`done (${doneTasks.length})`}
                   extra={!showDone && !isEverything && (
                     <span onClick={(e) => { e.stopPropagation(); clearDone(); }}
