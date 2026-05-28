@@ -79,6 +79,27 @@ const IconGrip = ({ size = 17 }) => (
     <circle cx="3.5" cy="14" r="1.5"/><circle cx="7.5" cy="14" r="1.5"/>
   </svg>
 );
+const IconSun = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2"/>
+    <g stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <line x1="12" y1="2.5" x2="12" y2="5"/>
+      <line x1="12" y1="19" x2="12" y2="21.5"/>
+      <line x1="2.5" y1="12" x2="5" y2="12"/>
+      <line x1="19" y1="12" x2="21.5" y2="12"/>
+      <line x1="4.7" y1="4.7" x2="6.4" y2="6.4"/>
+      <line x1="17.6" y1="17.6" x2="19.3" y2="19.3"/>
+      <line x1="4.7" y1="19.3" x2="6.4" y2="17.6"/>
+      <line x1="17.6" y1="6.4" x2="19.3" y2="4.7"/>
+    </g>
+  </svg>
+);
+const IconMoon = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <path d="M20 14.5A8 8 0 119.5 4 6 6 0 0020 14.5z"
+      stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+  </svg>
+);
 
 /* ─── task row ─── */
 function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onUpdateQuestion, isQExpanded, onToggleQ }) {
@@ -448,11 +469,13 @@ function FontSelect({ value, onChange, hasCustom, t }) {
 }
 
 /* ─── add-task row (looks like a task row, with a + commit and inline controls) ─── */
-function AddTaskRow({ t, fonts, colors, tags, ui, draft, onChange, onCommit, onCreateTag, inputRef }) {
+function AddTaskRow({ t, fonts, colors, tags, ui, draft, onChange, onCommit, onReset, onCreateTag, inputRef, dragEnabled }) {
   const isHold = draft.status === "hold";
   const isStar = !!draft.starred;
   const hasQ = draft.questionWho || draft.questionText;
   const tagOnDraft = tags?.find((tg) => tg.color === draft.color && tg.name?.trim());
+  const hasContent = !!(draft.text || draft.color || draft.starred ||
+    draft.status === "hold" || draft.questionWho || draft.questionText || draft.showQ);
 
   const tint = draft.color
     ? rgba(draft.color, t.dark ? 0.22 : 0.16)
@@ -481,6 +504,14 @@ function AddTaskRow({ t, fonts, colors, tags, ui, draft, onChange, onCommit, onC
         boxShadow: starOutline,
         borderBottom: hasQ && draft.showQ ? "none" : undefined,
       }}>
+        {/* grip-column spacer for visual alignment with draggable task rows */}
+        {dragEnabled && (
+          <span style={{
+            width: Math.round(ui.grip * 0.647), height: ui.grip,
+            flexShrink: 0, visibility: "hidden",
+          }} />
+        )}
+
         {/* + commit */}
         <button onClick={onCommit} title="Add task"
           style={{
@@ -563,6 +594,15 @@ function AddTaskRow({ t, fonts, colors, tags, ui, draft, onChange, onCommit, onC
           title={isHold ? "Resume" : "Put on hold"}
           style={{ ...iconBtn, color: isHold ? t.holdText : t.textFaint }}>
           {isHold ? <IconUndo size={ui.icon} /> : <IconPause size={ui.icon} />}
+        </button>
+
+        {/* clear-draft (aligns with the trash slot in task rows) */}
+        <button onClick={onReset} title="Clear"
+          style={{
+            ...iconBtn, color: t.textFaint,
+            visibility: hasContent ? "visible" : "hidden",
+          }}>
+          <IconTrash size={ui.icon} />
         </button>
       </div>
 
@@ -1182,8 +1222,9 @@ export default function BulletJournal() {
         <div className="bj-sidebar-bottom">
           <div style={divider} />
 
-          {/* settings panel */}
-        <button onClick={() => setSettingsOpen((o) => !o)} style={panelToggle}>
+          {/* settings panel — upward overlay so weeks above don't shift */}
+        <div style={{ position: "relative" }}>
+        <button onClick={() => { setSettingsOpen((o) => !o); setTrashOpen(false); }} style={panelToggle}>
           <span style={{
             display: "inline-block",
             transform: settingsOpen ? "rotate(90deg)" : "rotate(0deg)",
@@ -1193,24 +1234,31 @@ export default function BulletJournal() {
         </button>
         {settingsOpen && (
           <div style={{
-            padding: "8px 4px 4px", display: "flex",
-            flexDirection: "column", gap: "12px",
+            position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0,
+            zIndex: 5, padding: "10px 8px",
+            background: t.popover, border: `1px solid ${t.border}`, borderRadius: 6,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
+            maxHeight: "75vh", overflowY: "auto",
+            display: "flex", flexDirection: "column", gap: "12px",
           }}>
-            {/* light / dark */}
-            <div>
-              <div style={{ ...settingRow, marginBottom: "4px" }}>appearance</div>
-              <div style={{ display: "flex" }}>
-                <button style={{ ...segBtn(!t.dark), borderRadius: "5px 0 0 5px" }}
-                  onClick={() => setThemeKey("mode", "light")}>light</button>
-                <button style={{ ...segBtn(t.dark), borderRadius: "0 5px 5px 0", borderLeft: "none" }}
-                  onClick={() => setThemeKey("mode", "dark")}>dark</button>
+            {/* appearance + palette side by side */}
+            <div style={{ display: "flex", gap: "6px", alignItems: "stretch" }}>
+              <button
+                onClick={() => setThemeKey("mode", t.dark ? "light" : "dark")}
+                title={t.dark ? "Switch to light mode" : "Switch to dark mode"}
+                style={{
+                  flex: 1, cursor: "pointer",
+                  border: `1px solid ${t.border}`, background: t.surface,
+                  borderRadius: 5, padding: "5px 8px",
+                  color: t.textMuted, display: "flex",
+                  alignItems: "center", justifyContent: "center",
+                }}>
+                {t.dark ? <IconSun /> : <IconMoon />}
+              </button>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <PaletteSelect t={t} fonts={fonts} value={data.palette}
+                  onChange={selectPalette} />
               </div>
-            </div>
-            {/* palette */}
-            <div>
-              <div style={{ ...settingRow, marginBottom: "4px" }}>palette</div>
-              <PaletteSelect t={t} fonts={fonts} value={data.palette}
-                onChange={selectPalette} />
             </div>
             {/* theme presets for the active palette */}
             <div>
@@ -1240,28 +1288,31 @@ export default function BulletJournal() {
                 ))}
               </div>
             </div>
-            {/* colour pickers */}
-            <div style={settingRow}>
-              <span>UI Highlight</span>
-              <ColorPicker value={data.theme.highlight} t={t} colors={paletteColors}
-                onChange={(c) => c && setThemeKey("highlight", c)} />
-            </div>
-            <div style={settingRow}>
-              <span>Star Color</span>
-              <ColorPicker value={data.theme.star} t={t} colors={paletteColors}
-                onChange={(c) => c && setThemeKey("star", c)} />
-            </div>
-            <div style={settingRow}>
-              <span>Hold Color</span>
-              <ColorPicker value={data.theme.hold} t={t} colors={paletteColors}
-                onChange={(c) => c && setThemeKey("hold", c)} />
-            </div>
-            <div style={settingRow}>
-              <span>Background · {t.mode}</span>
-              <ColorPicker
-                value={(t.dark ? data.theme.bgDark : data.theme.bgLight) || null}
-                t={t} colors={paletteColors} allowNone variant="bg"
-                onChange={(c) => setThemeKey(t.dark ? "bgDark" : "bgLight", c)} />
+            {/* colour pickers in a 2x2 grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
+              columnGap: "10px", rowGap: "8px" }}>
+              <div style={settingRow}>
+                <span>UI Highlight</span>
+                <ColorPicker value={data.theme.highlight} t={t} colors={paletteColors}
+                  onChange={(c) => c && setThemeKey("highlight", c)} />
+              </div>
+              <div style={settingRow}>
+                <span>Star Color</span>
+                <ColorPicker value={data.theme.star} t={t} colors={paletteColors}
+                  onChange={(c) => c && setThemeKey("star", c)} />
+              </div>
+              <div style={settingRow}>
+                <span>Hold Color</span>
+                <ColorPicker value={data.theme.hold} t={t} colors={paletteColors}
+                  onChange={(c) => c && setThemeKey("hold", c)} />
+              </div>
+              <div style={settingRow}>
+                <span>Background</span>
+                <ColorPicker
+                  value={(t.dark ? data.theme.bgDark : data.theme.bgLight) || null}
+                  t={t} colors={paletteColors} allowNone variant="bg"
+                  onChange={(c) => setThemeKey(t.dark ? "bgDark" : "bgLight", c)} />
+              </div>
             </div>
             {/* tags */}
             <div>
@@ -1367,9 +1418,11 @@ export default function BulletJournal() {
             </button>
           </div>
         )}
+        </div>
 
-        {/* trash bin */}
-        <button onClick={() => setTrashOpen((o) => !o)} style={panelToggle}>
+        {/* trash bin — upward overlay too */}
+        <div style={{ position: "relative" }}>
+        <button onClick={() => { setTrashOpen((o) => !o); setSettingsOpen(false); }} style={panelToggle}>
           <span style={{
             display: "inline-block",
             transform: trashOpen ? "rotate(90deg)" : "rotate(0deg)",
@@ -1378,8 +1431,14 @@ export default function BulletJournal() {
           🗑 trash ({data.trash.length})
         </button>
         {trashOpen && (
-          <div style={{ padding: "6px 4px 4px", display: "flex",
-            flexDirection: "column", gap: "5px" }}>
+          <div style={{
+            position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0,
+            zIndex: 5, padding: "8px",
+            background: t.popover, border: `1px solid ${t.border}`, borderRadius: 6,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
+            maxHeight: "75vh", overflowY: "auto",
+            display: "flex", flexDirection: "column", gap: "5px",
+          }}>
             {data.trash.length === 0 && (
               <div style={{ fontFamily: fonts.body, fontSize: "13px",
                 color: t.textFaint, textAlign: "center" }}>empty</div>
@@ -1415,6 +1474,7 @@ export default function BulletJournal() {
             )}
           </div>
         )}
+        </div>
         </div>
       </aside>
 
@@ -1520,7 +1580,10 @@ export default function BulletJournal() {
               {canAdd && (
                 <AddTaskRow t={t} fonts={fonts} colors={paletteColors} tags={data.tags}
                   ui={ui} draft={draft} onChange={updateDraft} onCommit={commitDraft}
-                  onCreateTag={createTagInline} inputRef={inputRef}/>
+                  onReset={() => setDraft({ text: "", color: null, starred: false,
+                    status: "active", questionWho: "", questionText: "", showQ: false })}
+                  onCreateTag={createTagInline} inputRef={inputRef}
+                  dragEnabled={dragEnabled}/>
               )}
               {activeTasks.length === 0 && holdTasks.length === 0 && !canAdd && (
                 <div style={{

@@ -108,7 +108,7 @@ export default function ColorPicker({
                 placeholder="#hex"
                 spellCheck={false}
                 style={{
-                  width: 66, marginLeft: "auto",
+                  flex: 1, minWidth: 0, marginLeft: 4,
                   padding: "2px 6px", borderRadius: 3,
                   border: `1px solid ${t.border}`, background: t.surface,
                   fontSize: 11, color: t.text, outline: "none",
@@ -180,11 +180,13 @@ export default function ColorPicker({
                 />
                 <button onClick={submitName}
                   disabled={!draft.trim()}
+                  title="Save tag"
                   style={{
                     background: t.accent, color: t.accentText, border: "none",
-                    borderRadius: 4, padding: "3px 7px", cursor: "pointer",
-                    fontSize: 11, opacity: draft.trim() ? 1 : 0.4,
-                  }}>save</button>
+                    borderRadius: 4, padding: "3px 9px", cursor: "pointer",
+                    fontSize: 14, fontWeight: 600,
+                    opacity: draft.trim() ? 1 : 0.4,
+                  }}>+</button>
               </div>
             )}
           </div>
