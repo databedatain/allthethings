@@ -380,10 +380,10 @@ function PaletteSelect({ t, fonts, value, onChange }) {
   const [open, setOpen] = useState(false);
   const current = getPalette(value);
   const dots = (cols) => (
-    <span style={{ display: "flex", gap: "2px" }}>
+    <span style={{ display: "flex", gap: "2px", flexShrink: 0 }}>
       {cols.map((c, i) => (
         <span key={i} style={{
-          width: "10px", height: "10px", borderRadius: "2px", background: c,
+          width: "8px", height: "8px", borderRadius: "2px", background: c,
         }} />
       ))}
     </span>
@@ -1242,18 +1242,19 @@ export default function BulletJournal() {
             display: "flex", flexDirection: "column", gap: "12px",
           }}>
             {/* appearance + palette side by side */}
-            <div style={{ display: "flex", gap: "6px", alignItems: "stretch" }}>
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
               <button
                 onClick={() => setThemeKey("mode", t.dark ? "light" : "dark")}
                 title={t.dark ? "Switch to light mode" : "Switch to dark mode"}
                 style={{
-                  flex: 1, cursor: "pointer",
+                  width: 20, height: 20, flexShrink: 0,
+                  cursor: "pointer", padding: 0,
                   border: `1px solid ${t.border}`, background: t.surface,
-                  borderRadius: 5, padding: "5px 8px",
+                  borderRadius: 4,
                   color: t.textMuted, display: "flex",
                   alignItems: "center", justifyContent: "center",
                 }}>
-                {t.dark ? <IconSun /> : <IconMoon />}
+                {t.dark ? <IconSun size={13} /> : <IconMoon size={13} />}
               </button>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <PaletteSelect t={t} fonts={fonts} value={data.palette}
@@ -1294,16 +1295,19 @@ export default function BulletJournal() {
               <div style={settingRow}>
                 <span>UI Highlight</span>
                 <ColorPicker value={data.theme.highlight} t={t} colors={paletteColors}
+                  align="left"
                   onChange={(c) => c && setThemeKey("highlight", c)} />
               </div>
               <div style={settingRow}>
                 <span>Star Color</span>
                 <ColorPicker value={data.theme.star} t={t} colors={paletteColors}
+                  align="left"
                   onChange={(c) => c && setThemeKey("star", c)} />
               </div>
               <div style={settingRow}>
                 <span>Hold Color</span>
                 <ColorPicker value={data.theme.hold} t={t} colors={paletteColors}
+                  align="left"
                   onChange={(c) => c && setThemeKey("hold", c)} />
               </div>
               <div style={settingRow}>
@@ -1311,6 +1315,7 @@ export default function BulletJournal() {
                 <ColorPicker
                   value={(t.dark ? data.theme.bgDark : data.theme.bgLight) || null}
                   t={t} colors={paletteColors} allowNone variant="bg"
+                  align="left"
                   onChange={(c) => setThemeKey(t.dark ? "bgDark" : "bgLight", c)} />
               </div>
             </div>
