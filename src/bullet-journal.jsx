@@ -391,7 +391,7 @@ function PaletteSelect({ t, fonts, value, onChange }) {
   const rowStyle = (active) => ({
     width: "100%", display: "flex", alignItems: "center",
     justifyContent: "space-between", gap: "8px", cursor: "pointer",
-    borderRadius: "5px", padding: "5px 8px",
+    borderRadius: "5px", padding: "4px 8px",
     fontFamily: fonts.body, fontSize: "13px", color: t.textMuted,
     border: "none", background: active ? t.accentSoft : "transparent",
   });
@@ -1138,11 +1138,11 @@ export default function BulletJournal() {
     textAlign: "left",
   };
   const segBtn = (active) => ({
-    flex: 1, cursor: "pointer", padding: "4px 0",
+    flex: 1, cursor: "pointer", padding: "3px 0",
     border: `1px solid ${t.border}`,
     background: active ? t.accent : "transparent",
     color: active ? t.accentText : t.textMuted,
-    fontFamily: fonts.body, fontSize: "13px",
+    fontFamily: fonts.body, fontSize: "12px",
   });
   const panelToggle = {
     display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
@@ -1242,15 +1242,15 @@ export default function BulletJournal() {
             display: "flex", flexDirection: "column", gap: "12px",
           }}>
             {/* appearance + palette side by side */}
-            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: "6px", alignItems: "stretch" }}>
               <button
                 onClick={() => setThemeKey("mode", t.dark ? "light" : "dark")}
                 title={t.dark ? "Switch to light mode" : "Switch to dark mode"}
                 style={{
-                  width: 30, height: 30, flexShrink: 0,
+                  width: 26, flexShrink: 0,
                   cursor: "pointer", padding: 0,
                   border: `1px solid ${t.border}`, background: t.surface,
-                  borderRadius: 4,
+                  borderRadius: 5,
                   color: t.textMuted, display: "flex",
                   alignItems: "center", justifyContent: "center",
                 }}>
@@ -1295,19 +1295,19 @@ export default function BulletJournal() {
               <div style={settingRow}>
                 <span>UI Highlight</span>
                 <ColorPicker value={data.theme.highlight} t={t} colors={paletteColors}
-                  align="left"
+                  align="left" size={16}
                   onChange={(c) => c && setThemeKey("highlight", c)} />
               </div>
               <div style={settingRow}>
                 <span>Star Color</span>
                 <ColorPicker value={data.theme.star} t={t} colors={paletteColors}
-                  align="left"
+                  align="left" size={16}
                   onChange={(c) => c && setThemeKey("star", c)} />
               </div>
               <div style={settingRow}>
                 <span>Hold Color</span>
                 <ColorPicker value={data.theme.hold} t={t} colors={paletteColors}
-                  align="left"
+                  align="left" size={16}
                   onChange={(c) => c && setThemeKey("hold", c)} />
               </div>
               <div style={settingRow}>
@@ -1315,7 +1315,7 @@ export default function BulletJournal() {
                 <ColorPicker
                   value={(t.dark ? data.theme.bgDark : data.theme.bgLight) || null}
                   t={t} colors={paletteColors} allowNone variant="bg"
-                  align="left"
+                  align="left" size={16}
                   onChange={(c) => setThemeKey(t.dark ? "bgDark" : "bgLight", c)} />
               </div>
             </div>
@@ -1329,7 +1329,7 @@ export default function BulletJournal() {
                   display: "flex", alignItems: "center", gap: "6px",
                   marginBottom: "4px",
                 }}>
-                  <ColorPicker value={tag.color} t={t} colors={paletteColors} size={18}
+                  <ColorPicker value={tag.color} t={t} colors={paletteColors} size={16}
                     align="left"
                     onChange={(c) => c && c !== tag.color && setTagColor(tag.color, c)} />
                   <input
