@@ -136,6 +136,7 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <div
+        className="bj-row"
         draggable={drag.enabled && !editing}
         onDragStart={() => drag.onStart(task.id)}
         onDragOver={(e) => { if (drag.enabled) { e.preventDefault(); drag.onOver(task.id); } }}
@@ -252,29 +253,33 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
           color: t.textMuted, flexShrink: 0, whiteSpace: "nowrap", marginRight: "4px",
         }}>{formatDate(task.created)}</span>
 
-        {/* star toggle */}
+        {/* star toggle — a set star stays visible; an empty one hides until hover */}
         <button onClick={() => onToggleStar(task.id)} title={isStar ? "Unstar" : "Star"}
+          className={isStar ? undefined : "bj-row-action"}
           style={{ ...iconBtn, color: isStar ? t.star : t.textFaint }}>
           <IconStar filled={isStar} size={ui.star} />
         </button>
 
-        {/* question toggle */}
+        {/* question toggle — visible when a question exists */}
         <button onClick={() => onToggleQ(task.id)}
           title={isQExpanded ? "Collapse question" : "Add/view question"}
+          className={hasQ ? undefined : "bj-row-action"}
           style={{ ...iconBtn, color: hasQ ? t.question : t.textFaint }}>
           <IconQuestion size={ui.icon} />
         </button>
 
-        {/* hold toggle */}
+        {/* hold toggle — visible while on hold (resume affordance) */}
         <button onClick={() => onStatusChange(task.id, isHold ? "active" : "hold")}
           title={isHold ? "Resume" : "Put on hold"}
+          className={isHold ? undefined : "bj-row-action"}
           style={{ ...iconBtn, color: isHold ? t.holdText : t.textFaint }}>
           {isHold ? <IconUndo size={ui.icon} /> : <IconPause size={ui.icon} />}
         </button>
 
-        {/* delete */}
+        {/* delete — always secondary; stays revealed while the confirm is armed */}
         <button onClick={() => onDelete(task.id)}
           title={confirmKey === `del:${task.id}` ? "Click again to remove" : "Move to trash"}
+          className={`bj-row-action${confirmKey === `del:${task.id}` ? " is-armed" : ""}`}
           style={{
             ...iconBtn,
             color: confirmKey === `del:${task.id}` ? t.danger : t.textFaint,
@@ -339,9 +344,9 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
 /* ─── done row ─── */
 function DoneRow({ task, t, fonts, ui, confirmKey, onRestore, onDelete }) {
   return (
-    <div style={{
+    <div className="bj-row" style={{
       display: "flex", alignItems: "center", gap: "9px",
-      padding: `${Math.max(2, ui.padY - 1)}px ${ui.padX + 6}px`, borderRadius: "5px",
+      padding: `${Math.max(2, ui.padY - 1)}px ${ui.padX + 6}px`, borderRadius: CONTROL.radiusSm,
       background: t.accentSoft,
     }}>
       {/* checked box — uncheck to move back to active */}
@@ -362,6 +367,7 @@ function DoneRow({ task, t, fonts, ui, confirmKey, onRestore, onDelete }) {
       }}>{formatDate(task.created)}</span>
       <button onClick={() => onDelete(task.id)}
         title={confirmKey === `del:${task.id}` ? "Click again to remove" : "Move to trash"}
+        className={`bj-row-action${confirmKey === `del:${task.id}` ? " is-armed" : ""}`}
         style={{
           background: "none", border: "none", cursor: "pointer", padding: "3px",
           color: confirmKey === `del:${task.id}` ? t.danger : t.textFaint,
