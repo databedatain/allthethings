@@ -383,7 +383,7 @@ function PaletteSelect({ t, fonts, value, onChange }) {
     <span style={{ display: "flex", gap: "2px", flexShrink: 0 }}>
       {cols.map((c, i) => (
         <span key={i} style={{
-          width: "8px", height: "8px", borderRadius: "2px", background: c,
+          width: "10px", height: "10px", borderRadius: "2px", background: c,
         }} />
       ))}
     </span>
@@ -1247,7 +1247,7 @@ export default function BulletJournal() {
                 onClick={() => setThemeKey("mode", t.dark ? "light" : "dark")}
                 title={t.dark ? "Switch to light mode" : "Switch to dark mode"}
                 style={{
-                  width: size, height: size, flexShrink: 0,
+                  width: 40px, height: 40px, flexShrink: 0,
                   cursor: "pointer", padding: 0,
                   border: `1px solid ${t.border}`, background: t.surface,
                   borderRadius: 4,
