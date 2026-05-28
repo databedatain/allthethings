@@ -9,6 +9,7 @@ import {
   weekParts,
   DENSITIES,
   getDensity,
+  MAX_TAGS,
 } from "./weeks.js";
 import {
   loadFont,
@@ -80,21 +81,23 @@ const IconGrip = ({ size = 17 }) => (
 );
 
 /* ─── task row ─── */
-function TaskRow({ task, t, fonts, colors, drag, isOver, ui, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onUpdateQuestion, isQExpanded, onToggleQ }) {
+function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onUpdateQuestion, isQExpanded, onToggleQ }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.text);
   const isHold = task.status === "hold";
   const isStar = !!task.starred;
   const hasQ = task.questionWho || task.questionText;
+  const tagOnTask = tags?.find((tg) => tg.color === task.color && tg.name?.trim());
 
+  // tag (task.color) or hold owns the row tint; star is just the bold outline
   const tint = task.color
     ? rgba(task.color, t.dark ? 0.22 : 0.16)
-    : isStar ? t.starTint : isHold ? t.holdTint : t.surface;
+    : isHold ? t.holdTint : t.surface;
   const border = task.color
     ? `1px solid ${rgba(task.color, 0.5)}`
-    : isStar ? `1px solid ${t.starBorder}`
     : isHold ? `1px dashed ${t.holdBorder}`
     : `1px solid ${t.border}`;
+  const starOutline = isStar ? `inset 0 0 0 2px ${t.star}` : undefined;
 
   const commit = () => {
     const v = draft.trim();
@@ -121,6 +124,7 @@ function TaskRow({ task, t, fonts, colors, drag, isOver, ui, confirmKey, onEdit,
           padding: `${ui.padY}px ${ui.padX}px`,
           borderRadius: isQExpanded ? "6px 6px 0 0" : "6px",
           background: tint, border,
+          boxShadow: starOutline,
           borderBottom: isQExpanded ? "none" : undefined,
           borderTop: isOver ? `2px solid ${t.accent}` : undefined,
           transition: "background 0.15s ease",
@@ -175,14 +179,28 @@ function TaskRow({ task, t, fonts, colors, drag, isOver, ui, confirmKey, onEdit,
           </span>
         )}
 
+        {/* tag badge */}
+        {tagOnTask && (
+          <span style={{
+            fontFamily: fonts.body,
+            fontSize: `${Math.max(10, ui.taskFont - 5)}px`,
+            padding: "1px 7px", borderRadius: "8px",
+            background: rgba(tagOnTask.color, t.dark ? 0.28 : 0.18),
+            color: t.text,
+            border: `1px solid ${rgba(tagOnTask.color, 0.55)}`,
+            flexShrink: 0, whiteSpace: "nowrap",
+          }}>{tagOnTask.name}</span>
+        )}
+
         {/* date */}
         <span style={{
           fontFamily: fonts.heading, fontSize: `${ui.date}px`,
           color: t.textMuted, flexShrink: 0, whiteSpace: "nowrap", marginRight: "4px",
         }}>{formatDate(task.created)}</span>
 
-        {/* per-task colour */}
-        <ColorPicker value={task.color || null} t={t} colors={colors} size={ui.swatch} allowNone
+        {/* per-task colour (with tag picker) */}
+        <ColorPicker value={task.color || null} t={t} colors={colors} size={ui.swatch}
+          allowNone tags={tags} onCreateTag={onCreateTag}
           onChange={(c) => onSetColor(task.id, c)} />
 
         {/* star toggle */}
@@ -651,6 +669,40 @@ export default function BulletJournal() {
   const setHeadingFont = (id) => update((d) => ({ ...d, headingFont: id }));
   const setBodyFont = (id) => update((d) => ({ ...d, bodyFont: id }));
 
+  // tag editor: add, rename, recolor (propagating to tagged tasks), remove
+  const addTag = () =>
+    update((d) => {
+      if ((d.tags?.length || 0) >= MAX_TAGS) return d;
+      const used = new Set((d.tags || []).map((t) => t.color));
+      const pal = getPalette(d.palette).colors;
+      const color = pal.find((c) => !used.has(c)) || pal[0];
+      return { ...d, tags: [...(d.tags || []), { color, name: "" }] };
+    });
+  const removeTag = (color) =>
+    update((d) => ({ ...d, tags: (d.tags || []).filter((t) => t.color !== color) }));
+  const setTagName = (color, name) =>
+    update((d) => ({
+      ...d,
+      tags: (d.tags || []).map((t) => (t.color === color ? { ...t, name } : t)),
+    }));
+  const setTagColor = (oldColor, newColor) =>
+    update((d) => ({
+      ...d,
+      tags: (d.tags || []).map((t) =>
+        t.color === oldColor ? { ...t, color: newColor } : t
+      ),
+      tasks: d.tasks.map((x) =>
+        x.color === oldColor ? { ...x, color: newColor } : x
+      ),
+    }));
+  // inline naming from the per-task colour popover: creates a new tag
+  const createTagInline = (color, name) =>
+    update((d) => {
+      if ((d.tags?.length || 0) >= MAX_TAGS) return d;
+      if ((d.tags || []).some((t) => t.color === color)) return d;
+      return { ...d, tags: [...(d.tags || []), { color, name }] };
+    });
+
   const loadSamples = () => update((d) => rollIncompletes(withSampleWeeks(d)));
 
   const toggleQ = (id) =>
@@ -1008,6 +1060,41 @@ export default function BulletJournal() {
                 t={t} colors={paletteColors} allowNone variant="bg"
                 onChange={(c) => setThemeKey(t.dark ? "bgDark" : "bgLight", c)} />
             </div>
+            {/* tags */}
+            <div>
+              <div style={{ ...settingRow, marginBottom: "4px" }}>
+                <span>tags ({(data.tags || []).length}/{MAX_TAGS})</span>
+              </div>
+              {(data.tags || []).map((tag) => (
+                <div key={tag.color} style={{
+                  display: "flex", alignItems: "center", gap: "6px",
+                  marginBottom: "4px",
+                }}>
+                  <ColorPicker value={tag.color} t={t} colors={paletteColors} size={18}
+                    onChange={(c) => c && c !== tag.color && setTagColor(tag.color, c)} />
+                  <input
+                    value={tag.name}
+                    onChange={(e) => setTagName(tag.color, e.target.value)}
+                    placeholder="name…"
+                    style={{
+                      flex: 1, minWidth: 0, padding: "3px 7px", borderRadius: 4,
+                      border: `1px solid ${t.border}`, background: t.surface,
+                      fontFamily: fonts.body, fontSize: 13, color: t.text, outline: "none",
+                    }}
+                  />
+                  <button onClick={() => removeTag(tag.color)} title="Remove tag"
+                    style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      padding: 0, color: t.danger, fontSize: 13,
+                    }}>✕</button>
+                </div>
+              ))}
+              {(data.tags || []).length < MAX_TAGS && (
+                <button onClick={addTag} style={{ ...linkBtn }}>
+                  + add tag
+                </button>
+              )}
+            </div>
             {/* spacing density */}
             <div>
               <div style={{ ...settingRow, marginBottom: "4px" }}>spacing</div>
@@ -1247,12 +1334,12 @@ export default function BulletJournal() {
                 </div>
               )}
               {activeTasks.map((x) => (
-                <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} drag={drag}
+                <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} tags={data.tags} drag={drag}
                   ui={ui}
                   isOver={dragEnabled && overId === x.id && dragId !== x.id}
                   onEdit={editTask} onSetColor={setTaskColor}
                   onStatusChange={changeStatus} onDelete={armedDelete}
-                  onToggleStar={toggleStar} onUpdateQuestion={updateQuestion}
+                  onToggleStar={toggleStar} onCreateTag={createTagInline} onUpdateQuestion={updateQuestion}
                   confirmKey={confirmKey}
                   isQExpanded={expandedQ.has(x.id)} onToggleQ={toggleQ}/>
               ))}
@@ -1268,12 +1355,12 @@ export default function BulletJournal() {
                   <div style={{ display: "flex", flexDirection: "column",
                     gap: `${ui.taskGap}px` }}>
                     {holdTasks.map((x) => (
-                      <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} drag={drag}
+                      <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} tags={data.tags} drag={drag}
                         ui={ui}
                         isOver={dragEnabled && overId === x.id && dragId !== x.id}
                         onEdit={editTask} onSetColor={setTaskColor}
                         onStatusChange={changeStatus} onDelete={armedDelete}
-                        onToggleStar={toggleStar} onUpdateQuestion={updateQuestion}
+                        onToggleStar={toggleStar} onCreateTag={createTagInline} onUpdateQuestion={updateQuestion}
                         confirmKey={confirmKey}
                         isQExpanded={expandedQ.has(x.id)} onToggleQ={toggleQ}/>
                     ))}

@@ -54,13 +54,16 @@ export function getDensity(id) {
   return DENSITIES.find((x) => x.id === id) || DENSITIES[0];
 }
 
+export const MAX_TAGS = 20;
+
 export function defaultData() {
   return {
-    schemaVersion: 10,
+    schemaVersion: 11,
     tasks: [],
     trash: [],
     weekNotes: {},
     rolloutCounts: {},
+    tags: [],
     sortMode: "custom",
     sortOrder: "oldest",
     nextId: 1,
@@ -169,6 +172,10 @@ export function migrate(data) {
 
   if (d.schemaVersion < 10) {
     d = { ...d, schemaVersion: 10, rolloutCounts: d.rolloutCounts || {} };
+  }
+
+  if (d.schemaVersion < 11) {
+    d = { ...d, schemaVersion: 11, tags: d.tags || [] };
   }
 
   return d;
