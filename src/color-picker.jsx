@@ -108,8 +108,8 @@ export default function ColorPicker({
                 placeholder="#hex"
                 spellCheck={false}
                 style={{
-                  flex: 1, minWidth: 0, marginLeft: 4,
-                  padding: "2px 6px", borderRadius: 3,
+                  width: 40, marginLeft: 4,
+                  padding: "2px 4px", borderRadius: 3,
                   border: `1px solid ${t.border}`, background: t.surface,
                   fontSize: 11, color: t.text, outline: "none",
                   fontFamily: "ui-monospace, 'Courier New', monospace",

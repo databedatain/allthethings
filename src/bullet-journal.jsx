@@ -757,10 +757,15 @@ export default function BulletJournal() {
     });
   }, [save]);
 
-  // keyboard undo / redo (ignored while typing in a field)
+  // keyboard undo / redo (ignored while typing in a field) + ESC to close panels
   useEffect(() => {
     const onKey = (e) => {
       const tag = (e.target.tagName || "").toLowerCase();
+      if (e.key === "Escape") {
+        if (settingsOpen) { setSettingsOpen(false); e.preventDefault(); }
+        else if (trashOpen) { setTrashOpen(false); e.preventDefault(); }
+        return;
+      }
       if (tag === "input" || tag === "textarea") return;
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === "z") {
@@ -773,7 +778,7 @@ export default function BulletJournal() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo]);
+  }, [undo, redo, settingsOpen, trashOpen]);
 
   const theme = data ? buildTheme(data.theme) : buildTheme({});
 
@@ -1222,9 +1227,8 @@ export default function BulletJournal() {
         <div className="bj-sidebar-bottom">
           <div style={divider} />
 
-          {/* settings panel — upward overlay so weeks above don't shift */}
-        <div style={{ position: "relative" }}>
-        <button onClick={() => { setSettingsOpen((o) => !o); setTrashOpen(false); }} style={panelToggle}>
+        {/* settings panel */}
+        <button onClick={() => setSettingsOpen((o) => !o)} style={panelToggle}>
           <span style={{
             display: "inline-block",
             transform: settingsOpen ? "rotate(90deg)" : "rotate(0deg)",
@@ -1234,11 +1238,7 @@ export default function BulletJournal() {
         </button>
         {settingsOpen && (
           <div style={{
-            position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0,
-            zIndex: 5, padding: "10px 8px",
-            background: t.popover, border: `1px solid ${t.border}`, borderRadius: 6,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
-            maxHeight: "75vh", overflowY: "auto",
+            padding: "8px 4px 4px",
             display: "flex", flexDirection: "column", gap: "12px",
           }}>
             {/* appearance + palette side by side */}
@@ -1418,11 +1418,9 @@ export default function BulletJournal() {
             </button>
           </div>
         )}
-        </div>
 
-        {/* trash bin — upward overlay too */}
-        <div style={{ position: "relative" }}>
-        <button onClick={() => { setTrashOpen((o) => !o); setSettingsOpen(false); }} style={panelToggle}>
+        {/* trash bin */}
+        <button onClick={() => setTrashOpen((o) => !o)} style={panelToggle}>
           <span style={{
             display: "inline-block",
             transform: trashOpen ? "rotate(90deg)" : "rotate(0deg)",
@@ -1431,14 +1429,8 @@ export default function BulletJournal() {
           🗑 trash ({data.trash.length})
         </button>
         {trashOpen && (
-          <div style={{
-            position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0,
-            zIndex: 5, padding: "8px",
-            background: t.popover, border: `1px solid ${t.border}`, borderRadius: 6,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
-            maxHeight: "75vh", overflowY: "auto",
-            display: "flex", flexDirection: "column", gap: "5px",
-          }}>
+          <div style={{ padding: "6px 4px 4px", display: "flex",
+            flexDirection: "column", gap: "5px" }}>
             {data.trash.length === 0 && (
               <div style={{ fontFamily: fonts.body, fontSize: "13px",
                 color: t.textFaint, textAlign: "center" }}>empty</div>
@@ -1474,7 +1466,6 @@ export default function BulletJournal() {
             )}
           </div>
         )}
-        </div>
         </div>
       </aside>
 
