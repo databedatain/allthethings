@@ -152,10 +152,11 @@ export function resolveColor(token, paletteColors) {
 
 export function colorToken(hex, paletteColors) {
   if (!hex) return null;
+  const h = hex.toLowerCase();
   for (let i = 0; i < paletteColors.length; i++) {
     for (let s = 0; s < SHADE_STEPS.length; s++) {
       const shade = s ? lighten(paletteColors[i], SHADE_STEPS[s]) : paletteColors[i];
-      if (hex === shade) return s ? `slot:${i}:${s}` : `slot:${i}`;
+      if (h === shade.toLowerCase()) return s ? `slot:${i}:${s}` : `slot:${i}`;
     }
   }
   return hex;
