@@ -122,6 +122,15 @@ export function shades(hex) {
   return [hex, lighten(hex, 0.2), lighten(hex, 0.4)];
 }
 
+// solid fill for a tagged task row. Replaces the old rgba() wash: painting the
+// tint as an opaque colour (rather than compositing a low-alpha layer through
+// the translucent surface + gradient) keeps the colour true instead of
+// double-diluting it into mush. Light mode lightens toward a pale card; dark
+// mode darkens toward a deep one — both keep body text legible on top.
+export function rowFill(hex, dark) {
+  return dark ? darken(hex, 0.6) : lighten(hex, 0.78);
+}
+
 // background-suitable shades: very pale in light mode, very dark in dark mode
 export function bgShades(hex, dark) {
   return dark
@@ -146,6 +155,9 @@ export function buildTheme(cfg) {
     bg: (dark ? bgDark : bgLight) || defaultBg,
     surface: dark ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.55)",
     surfaceAlt: dark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.4)",
+    // solid task-row fills — uncoloured rows sit on an opaque card instead of
+    // the translucent surface, so they read as deliberate rows, not glass.
+    rowBase: dark ? "#2b2d33" : "#fffdf9",
     panel: dark ? "rgba(255,255,255,0.045)" : "rgba(255,255,255,0.6)",
     popover: dark ? "#2c2e33" : "#ffffff",
     text: dark ? "#e8e6e1" : "#2c2c2c",
@@ -168,6 +180,7 @@ export function buildTheme(cfg) {
     starBorder: rgba(star, 0.55),
     hold,
     holdTint: rgba(hold, dark ? 0.18 : 0.15),
+    holdFill: dark ? darken(hold, 0.62) : lighten(hold, 0.82),
     holdBorder: rgba(hold, 0.5),
     holdText: dark ? lighten(hold, 0.3) : darken(hold, 0.28),
   };
