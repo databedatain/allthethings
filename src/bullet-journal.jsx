@@ -926,9 +926,20 @@ export default function BulletJournal() {
 
   const selectPalette = (id) =>
     update((d) => {
+      // Recover any literal hex that matches the palette we're *leaving*: it was
+      // almost certainly a palette pick that got frozen as a literal (picked
+      // under old code, or migrated while a different palette was active). Re-
+      // tokenising it against the outgoing palette lets it shift from here on.
+      const out = getPalette(d.palette).colors;
+      const fix = (c) =>
+        typeof c === "string" && !c.startsWith("slot:") ? colorToken(c, out) : c;
+      const tags = (d.tags || []).map((t) => ({ ...t, color: fix(t.color) }));
+      const tasks = d.tasks.map((x) => ({ ...x, color: fix(x.color) }));
+      const trash = (d.trash || []).map((x) => ({ ...x, color: fix(x.color) }));
       const first = PRESETS.find((p) => p.palette === id);
       return {
         ...d,
+        tags, tasks, trash,
         palette: id,
         theme: first ? presetTheme(d.theme, first) : d.theme,
       };

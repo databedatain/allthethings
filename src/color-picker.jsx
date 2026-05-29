@@ -25,14 +25,11 @@ export default function ColorPicker({
   const tagMatch = tags?.find((tg) => tg.color === value && tg.name?.trim());
   const canName = !!(value && onCreateTag && !tagMatch);
 
-  const close = () => { setOpen(false); setDraft(""); };
-  const toggle = () => {
-    if (!open) {
-      // sync the hex field to the current value when the popover opens
-      setHexDraft(value && /^#[0-9a-f]{6}$/i.test(value) ? value : "");
-    }
-    setOpen(!open);
-  };
+  const close = () => { setOpen(false); setDraft(""); setHexDraft(""); };
+  // the hex field is for *entering* a custom colour — it starts empty rather
+  // than echoing the current selection, so a palette pick is never re-submitted
+  // as a literal hex (which wouldn't shift with the palette).
+  const toggle = () => setOpen(!open);
 
   const submitHex = () => {
     const raw = hexDraft.trim();
