@@ -21,7 +21,7 @@ import {
   fontStack,
   loadCatalogFonts,
 } from "./font.js";
-import { buildTheme, rgba, rowFill, presetBg, PRESETS, PALETTES, getPalette } from "./theme.js";
+import { buildTheme, rgba, rowFill, resolveColor, colorToken, presetBg, PRESETS, PALETTES, getPalette } from "./theme.js";
 import { TYPE, SP, CONTROL } from "./tokens.js";
 import ColorPicker from "./color-picker.jsx";
 
@@ -110,13 +110,17 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
   const isStar = !!task.starred;
   const hasQ = task.questionWho || task.questionText;
   const tagOnTask = tags?.find((tg) => tg.color === task.color && tg.name?.trim());
+  // tokens resolve to a concrete hex against the active palette for display.
+  // resolvedTags feeds the (hex-based) ColorPicker its tag shortcuts.
+  const taskColor = resolveColor(task.color, colors);
+  const resolvedTags = tags?.map((tg) => ({ ...tg, color: resolveColor(tg.color, colors) }));
 
   // tag (task.color) or hold owns the row tint; star is just the bold outline
   const tint = task.color
-    ? rowFill(task.color, t.dark)
+    ? rowFill(taskColor, t.dark)
     : isHold ? t.holdFill : t.rowBase;
   const border = task.color
-    ? `1px solid ${rgba(task.color, 0.5)}`
+    ? `1px solid ${rgba(taskColor, 0.5)}`
     : isHold ? `1px dashed ${t.holdBorder}`
     : `1px solid ${t.border}`;
   const starOutline = isStar ? `inset 0 0 0 2px ${t.star}` : undefined;
@@ -204,21 +208,22 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
 
         {/* tag pill — merged colour-picker trigger and tag badge */}
         <ColorPicker
-          value={task.color || null} t={t} colors={colors} allowNone
-          tags={tags} onCreateTag={onCreateTag}
+          value={taskColor} t={t} colors={colors} allowNone
+          tags={resolvedTags} onCreateTag={onCreateTag}
           onChange={(c) => onSetColor(task.id, c)}
           renderTrigger={(toggle) => {
             const pillFont = `${Math.max(10, ui.taskFont - 5)}px`;
             const padding = "1px 8px";
             const radius = CONTROL.pill;
             if (tagOnTask) {
+              const tagHex = resolveColor(tagOnTask.color, colors);
               return (
                 <button onClick={toggle} title={`Tag: ${tagOnTask.name}`}
                   style={{
                     fontFamily: fonts.body, fontSize: pillFont, padding, borderRadius: radius,
-                    background: rgba(tagOnTask.color, t.dark ? 0.28 : 0.18),
+                    background: rgba(tagHex, t.dark ? 0.28 : 0.18),
                     color: t.text,
-                    border: `1px solid ${rgba(tagOnTask.color, 0.55)}`,
+                    border: `1px solid ${rgba(tagHex, 0.55)}`,
                     cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
                   }}>{tagOnTask.name}</button>
               );
@@ -228,9 +233,9 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
                 <button onClick={toggle} title="Tag colour (click to rename)"
                   style={{
                     fontFamily: fonts.body, fontSize: pillFont, padding, borderRadius: radius,
-                    background: rgba(task.color, t.dark ? 0.28 : 0.18),
+                    background: rgba(taskColor, t.dark ? 0.28 : 0.18),
                     color: t.textMuted,
-                    border: `1px solid ${rgba(task.color, 0.55)}`,
+                    border: `1px solid ${rgba(taskColor, 0.55)}`,
                     cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
                   }}>—</button>
               );
@@ -481,14 +486,16 @@ function AddTaskRow({ t, fonts, colors, tags, ui, draft, onChange, onCommit, onR
   const isStar = !!draft.starred;
   const hasQ = draft.questionWho || draft.questionText;
   const tagOnDraft = tags?.find((tg) => tg.color === draft.color && tg.name?.trim());
+  const draftColor = resolveColor(draft.color, colors);
+  const resolvedTags = tags?.map((tg) => ({ ...tg, color: resolveColor(tg.color, colors) }));
   const hasContent = !!(draft.text || draft.color || draft.starred ||
     draft.status === "hold" || draft.questionWho || draft.questionText || draft.showQ);
 
   const tint = draft.color
-    ? rowFill(draft.color, t.dark)
+    ? rowFill(draftColor, t.dark)
     : isHold ? t.holdFill : t.rowBase;
   const border = draft.color
-    ? `1px solid ${rgba(draft.color, 0.5)}`
+    ? `1px solid ${rgba(draftColor, 0.5)}`
     : isHold ? `1px dashed ${t.holdBorder}`
     : `1px dashed ${t.border}`;
   const starOutline = isStar ? `inset 0 0 0 2px ${t.star}` : undefined;
@@ -546,27 +553,30 @@ function AddTaskRow({ t, fonts, colors, tags, ui, draft, onChange, onCommit, onR
 
         {/* tag pill */}
         <ColorPicker
-          value={draft.color || null} t={t} colors={colors} allowNone
-          tags={tags} onCreateTag={onCreateTag}
-          onChange={(c) => onChange({ color: c })}
+          value={draftColor} t={t} colors={colors} allowNone
+          tags={resolvedTags} onCreateTag={onCreateTag}
+          onChange={(c) => onChange({ color: colorToken(c, colors) })}
           renderTrigger={(toggle) => {
-            if (tagOnDraft) return (
+            if (tagOnDraft) {
+              const tagHex = resolveColor(tagOnDraft.color, colors);
+              return (
               <button onClick={toggle} title={`Tag: ${tagOnDraft.name}`}
                 style={{
                   fontFamily: fonts.body, fontSize: pillFont, padding: pillPad, borderRadius: pillRadius,
-                  background: rgba(tagOnDraft.color, t.dark ? 0.28 : 0.18),
+                  background: rgba(tagHex, t.dark ? 0.28 : 0.18),
                   color: t.text,
-                  border: `1px solid ${rgba(tagOnDraft.color, 0.55)}`,
+                  border: `1px solid ${rgba(tagHex, 0.55)}`,
                   cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
                 }}>{tagOnDraft.name}</button>
             );
+            }
             if (draft.color) return (
               <button onClick={toggle} title="Tag colour (click to rename)"
                 style={{
                   fontFamily: fonts.body, fontSize: pillFont, padding: pillPad, borderRadius: pillRadius,
-                  background: rgba(draft.color, t.dark ? 0.28 : 0.18),
+                  background: rgba(draftColor, t.dark ? 0.28 : 0.18),
                   color: t.textMuted,
-                  border: `1px solid ${rgba(draft.color, 0.55)}`,
+                  border: `1px solid ${rgba(draftColor, 0.55)}`,
                   cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
                 }}>—</button>
             );
@@ -838,10 +848,10 @@ export default function BulletJournal() {
     }));
 
   const setTaskColor = (id, color) =>
-    update((d) => ({
-      ...d,
-      tasks: d.tasks.map((x) => (x.id === id ? { ...x, color } : x)),
-    }));
+    update((d) => {
+      const token = colorToken(color, getPalette(d.palette).colors);
+      return { ...d, tasks: d.tasks.map((x) => (x.id === id ? { ...x, color: token } : x)) };
+    });
 
   const deleteTask = (id) =>
     update((d) => {
@@ -938,7 +948,8 @@ export default function BulletJournal() {
       if ((d.tags?.length || 0) >= MAX_TAGS) return d;
       const used = new Set((d.tags || []).map((t) => t.color));
       const pal = getPalette(d.palette).colors;
-      const color = pal.find((c) => !used.has(c)) || pal[0];
+      // pick the first palette slot not already taken by a tag
+      const color = pal.map((_, i) => `slot:${i}`).find((tok) => !used.has(tok)) || "slot:0";
       return { ...d, tags: [...(d.tags || []), { color, name: "" }] };
     });
   const removeTag = (color) =>
@@ -949,21 +960,25 @@ export default function BulletJournal() {
       tags: (d.tags || []).map((t) => (t.color === color ? { ...t, name } : t)),
     }));
   const setTagColor = (oldColor, newColor) =>
-    update((d) => ({
-      ...d,
-      tags: (d.tags || []).map((t) =>
-        t.color === oldColor ? { ...t, color: newColor } : t
-      ),
-      tasks: d.tasks.map((x) =>
-        x.color === oldColor ? { ...x, color: newColor } : x
-      ),
-    }));
+    update((d) => {
+      const token = colorToken(newColor, getPalette(d.palette).colors);
+      return {
+        ...d,
+        tags: (d.tags || []).map((t) =>
+          t.color === oldColor ? { ...t, color: token } : t
+        ),
+        tasks: d.tasks.map((x) =>
+          x.color === oldColor ? { ...x, color: token } : x
+        ),
+      };
+    });
   // inline naming from the per-task colour popover: creates a new tag
   const createTagInline = (color, name) =>
     update((d) => {
       if ((d.tags?.length || 0) >= MAX_TAGS) return d;
-      if ((d.tags || []).some((t) => t.color === color)) return d;
-      return { ...d, tags: [...(d.tags || []), { color, name }] };
+      const token = colorToken(color, getPalette(d.palette).colors);
+      if ((d.tags || []).some((t) => t.color === token)) return d;
+      return { ...d, tags: [...(d.tags || []), { color: token, name }] };
     });
 
   const loadSamples = () => update((d) => rollIncompletes(withSampleWeeks(d)));
@@ -1348,9 +1363,9 @@ export default function BulletJournal() {
                   display: "flex", alignItems: "center", gap: "6px",
                   marginBottom: "4px",
                 }}>
-                  <ColorPicker value={tag.color} t={t} colors={paletteColors} size={16}
+                  <ColorPicker value={resolveColor(tag.color, paletteColors)} t={t} colors={paletteColors} size={16}
                     align="left"
-                    onChange={(c) => c && c !== tag.color && setTagColor(tag.color, c)} />
+                    onChange={(c) => c && c !== resolveColor(tag.color, paletteColors) && setTagColor(tag.color, c)} />
                   <input
                     value={tag.name}
                     onChange={(e) => setTagName(tag.color, e.target.value)}

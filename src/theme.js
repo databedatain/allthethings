@@ -131,6 +131,27 @@ export function rowFill(hex, dark) {
   return dark ? darken(hex, 0.6) : lighten(hex, 0.78);
 }
 
+// Colour tokens. A stored colour (on a task or a tag) is either:
+//   - "slot:N" — an index into the *active* palette, so it shifts to the
+//     corresponding colour when the user switches palettes; or
+//   - "#rrggbb" — a fixed colour (neutrals + custom picks) that never shifts.
+//   - null — no colour.
+// resolveColor turns a token into a concrete hex for display; colorToken does
+// the reverse, classifying a picked hex as a palette slot or a fixed colour.
+export function resolveColor(token, paletteColors) {
+  if (!token) return null;
+  if (token.startsWith("slot:")) {
+    return paletteColors[Number(token.slice(5))] ?? null;
+  }
+  return token;
+}
+
+export function colorToken(hex, paletteColors) {
+  if (!hex) return null;
+  const i = paletteColors.indexOf(hex);
+  return i >= 0 ? `slot:${i}` : hex;
+}
+
 // background-suitable shades: very pale in light mode, very dark in dark mode
 export function bgShades(hex, dark) {
   return dark

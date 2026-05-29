@@ -1,6 +1,6 @@
 /* Week-bucket helpers, schema migration, incomplete-roll, and sample data. */
 
-import { THEME_DEFAULTS } from "./theme.js";
+import { THEME_DEFAULTS, getPalette, colorToken } from "./theme.js";
 
 export function mondayOf(date) {
   const d = new Date(date);
@@ -58,7 +58,7 @@ export const MAX_TAGS = 20;
 
 export function defaultData() {
   return {
-    schemaVersion: 11,
+    schemaVersion: 12,
     tasks: [],
     trash: [],
     weekNotes: {},
@@ -176,6 +176,21 @@ export function migrate(data) {
 
   if (d.schemaVersion < 11) {
     d = { ...d, schemaVersion: 11, tags: d.tags || [] };
+  }
+
+  // v12: colours become palette-relative tokens. Any stored hex that matches a
+  // slot in the saved palette is rewritten to "slot:N" so it tracks future
+  // palette changes; neutrals and custom hexes stay literal.
+  if (d.schemaVersion < 12) {
+    const pal = getPalette(d.palette || "default").colors;
+    const tok = (c) => colorToken(c ?? null, pal);
+    d = {
+      ...d,
+      schemaVersion: 12,
+      tags: (d.tags || []).map((t) => ({ ...t, color: tok(t.color) })),
+      tasks: (d.tasks || []).map((x) => ({ ...x, color: tok(x.color) })),
+      trash: (d.trash || []).map((x) => ({ ...x, color: tok(x.color) })),
+    };
   }
 
   return d;
