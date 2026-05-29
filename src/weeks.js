@@ -58,7 +58,7 @@ export const MAX_TAGS = 20;
 
 export function defaultData() {
   return {
-    schemaVersion: 12,
+    schemaVersion: 13,
     tasks: [],
     trash: [],
     weekNotes: {},
@@ -190,6 +190,23 @@ export function migrate(data) {
       tags: (d.tags || []).map((t) => ({ ...t, color: tok(t.color) })),
       tasks: (d.tasks || []).map((x) => ({ ...x, color: tok(x.color) })),
       trash: (d.trash || []).map((x) => ({ ...x, color: tok(x.color) })),
+    };
+  }
+
+  // v13: colour tokens became shade-aware. Re-tokenise any literal hex that is
+  // actually a lightened palette shade (frozen as a literal by the v12 pass, or
+  // an unnamed colour picked from a shade swatch) so it shifts too. Existing
+  // slot tokens and genuine custom hexes are left untouched.
+  if (d.schemaVersion < 13) {
+    const pal = getPalette(d.palette || "default").colors;
+    const retok = (c) =>
+      typeof c === "string" && !c.startsWith("slot:") ? colorToken(c, pal) : c;
+    d = {
+      ...d,
+      schemaVersion: 13,
+      tags: (d.tags || []).map((t) => ({ ...t, color: retok(t.color) })),
+      tasks: (d.tasks || []).map((x) => ({ ...x, color: retok(x.color) })),
+      trash: (d.trash || []).map((x) => ({ ...x, color: retok(x.color) })),
     };
   }
 

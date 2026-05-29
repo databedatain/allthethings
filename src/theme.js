@@ -118,8 +118,9 @@ export function readableOn(hex) {
 }
 
 // base, +20% lighter, +40% lighter — the popover swatch column for one colour
+export const SHADE_STEPS = [0, 0.2, 0.4];
 export function shades(hex) {
-  return [hex, lighten(hex, 0.2), lighten(hex, 0.4)];
+  return SHADE_STEPS.map((a) => (a ? lighten(hex, a) : hex));
 }
 
 // solid fill for a tagged task row. Replaces the old rgba() wash: painting the
@@ -132,24 +133,32 @@ export function rowFill(hex, dark) {
 }
 
 // Colour tokens. A stored colour (on a task or a tag) is either:
-//   - "slot:N" — an index into the *active* palette, so it shifts to the
-//     corresponding colour when the user switches palettes; or
+//   - "slot:N" / "slot:N:S" — palette slot N at shade S (0=base, 1/2=lighter,
+//     matching the picker's shade column). Shifts when the palette changes.
 //   - "#rrggbb" — a fixed colour (neutrals + custom picks) that never shifts.
 //   - null — no colour.
 // resolveColor turns a token into a concrete hex for display; colorToken does
-// the reverse, classifying a picked hex as a palette slot or a fixed colour.
+// the reverse, classifying a picked hex as a palette shade or a fixed colour.
 export function resolveColor(token, paletteColors) {
   if (!token) return null;
   if (token.startsWith("slot:")) {
-    return paletteColors[Number(token.slice(5))] ?? null;
+    const [i, s = 0] = token.slice(5).split(":").map(Number);
+    const base = paletteColors[i];
+    if (base == null) return null;
+    return s ? lighten(base, SHADE_STEPS[s]) : base;
   }
   return token;
 }
 
 export function colorToken(hex, paletteColors) {
   if (!hex) return null;
-  const i = paletteColors.indexOf(hex);
-  return i >= 0 ? `slot:${i}` : hex;
+  for (let i = 0; i < paletteColors.length; i++) {
+    for (let s = 0; s < SHADE_STEPS.length; s++) {
+      const shade = s ? lighten(paletteColors[i], SHADE_STEPS[s]) : paletteColors[i];
+      if (hex === shade) return s ? `slot:${i}:${s}` : `slot:${i}`;
+    }
+  }
+  return hex;
 }
 
 // background-suitable shades: very pale in light mode, very dark in dark mode
