@@ -128,7 +128,7 @@ export function shades(hex) {
 // double-diluting it into mush. Light mode lightens toward a pale card; dark
 // mode darkens toward a deep one — both keep body text legible on top.
 export function rowFill(hex, dark) {
-  return dark ? darken(hex, 0.6) : lighten(hex, 0.78);
+  return dark ? darken(hex, 0.4) : lighten(hex, 0.4);
 }
 
 // background-suitable shades: very pale in light mode, very dark in dark mode
