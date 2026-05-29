@@ -21,7 +21,7 @@ import {
   fontStack,
   loadCatalogFonts,
 } from "./font.js";
-import { buildTheme, rgba, presetBg, PRESETS, PALETTES, getPalette } from "./theme.js";
+import { buildTheme, rgba, rowFill, presetBg, PRESETS, PALETTES, getPalette } from "./theme.js";
 import { TYPE, SP, CONTROL } from "./tokens.js";
 import ColorPicker from "./color-picker.jsx";
 
@@ -113,8 +113,8 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
 
   // tag (task.color) or hold owns the row tint; star is just the bold outline
   const tint = task.color
-    ? rgba(task.color, t.dark ? 0.22 : 0.16)
-    : isHold ? t.holdTint : t.surface;
+    ? rowFill(task.color, t.dark)
+    : isHold ? t.holdFill : t.rowBase;
   const border = task.color
     ? `1px solid ${rgba(task.color, 0.5)}`
     : isHold ? `1px dashed ${t.holdBorder}`
@@ -485,8 +485,8 @@ function AddTaskRow({ t, fonts, colors, tags, ui, draft, onChange, onCommit, onR
     draft.status === "hold" || draft.questionWho || draft.questionText || draft.showQ);
 
   const tint = draft.color
-    ? rgba(draft.color, t.dark ? 0.22 : 0.16)
-    : isHold ? t.holdTint : t.surface;
+    ? rowFill(draft.color, t.dark)
+    : isHold ? t.holdFill : t.rowBase;
   const border = draft.color
     ? `1px solid ${rgba(draft.color, 0.5)}`
     : isHold ? `1px dashed ${t.holdBorder}`
