@@ -1,6 +1,6 @@
 import { useState } from "react";
 import ColorPicker from "./color-picker.jsx";
-import { IconCheck, IconPause, IconPlus, IconTrash, IconUndo, IconQuestion, IconStar, IconGrip, IconNote, IconPeople, IconArrowUp } from "./icons.jsx";
+import { IconCheck, IconPause, IconPlus, IconTrash, IconUndo, IconQuestion, IconStar, IconGrip, IconNote, IconPeople, IconArrowUp, IconTarget } from "./icons.jsx";
 import { rgba, rowFill, getIntensity, resolveColor, colorToken } from "./theme.js";
 import { TYPE, CONTROL } from "./tokens.js";
 
@@ -11,7 +11,7 @@ const formatDate = (ts) => {
 };
 
 /* ─── task row ─── */
-export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intensity, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask, isExpanded, onToggleDetail }) {
+export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intensity, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask, isExpanded, onToggleDetail, isFocused, onToggleFocus, isSpotlit }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.text);
   const isHold = task.status === "hold";
@@ -35,7 +35,10 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
     ? `1px solid ${rgba(taskColor, getIntensity(intensity).borderA)}`
     : isHold ? `1px dashed ${t.holdBorder}`
     : `1px solid ${t.border}`;
-  const starOutline = isStar ? `inset 0 0 0 2px ${t.star}` : undefined;
+  const starOutline = [
+    isStar ? `inset 0 0 0 2px ${t.star}` : null,
+    isSpotlit ? `0 0 0 3px ${t.accent}` : null,
+  ].filter(Boolean).join(", ") || undefined;
 
   const commit = () => {
     const v = draft.trim();
@@ -50,7 +53,7 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
+    <div id={`bj-task-${task.id}`} style={{ display: "flex", flexDirection: "column" }}>
       <div
         className="bj-row"
         draggable={drag.enabled && !editing}
@@ -77,7 +80,7 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
         )}
 
         {/* checkbox — click to complete */}
-        <button onClick={() => onStatusChange(task.id, "done")} title="Mark done"
+        <button onClick={(e) => onStatusChange(task.id, "done", { x: e.clientX, y: e.clientY })} title="Mark done"
           style={{
             width: `${ui.checkbox}px`, height: `${ui.checkbox}px`,
             borderRadius: "4px", cursor: "pointer",
@@ -198,6 +201,16 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
           fontFamily: fonts.body, fontSize: `${ui.date}px`,
           color: t.textMuted, flexShrink: 0, whiteSpace: "nowrap", marginRight: "4px",
         }}>{formatDate(task.created)}</span>
+
+        {/* today's focus — a set target stays visible like a set star */}
+        {onToggleFocus && (
+          <button onClick={() => onToggleFocus(task.id)}
+            title={isFocused ? "Remove from today's focus" : "Add to today's focus (up to 3)"}
+            className={isFocused ? undefined : "bj-row-action"}
+            style={{ ...iconBtn, color: isFocused ? t.accentText2 : t.textFaint }}>
+            <IconTarget size={ui.icon} />
+          </button>
+        )}
 
         {/* star toggle — a set star stays visible; an empty one hides until hover */}
         <button onClick={() => onToggleStar(task.id)} title={isStar ? "Unstar" : "Star"}

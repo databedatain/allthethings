@@ -104,3 +104,17 @@ export const IconArrowUp = ({ size = 14 }) => (
     <path d="M7 11.5V2.5M3.5 6L7 2.5L10.5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
+export const IconTarget = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="8" r="6.2" stroke="currentColor" strokeWidth="1.4"/>
+    <circle cx="8" cy="8" r="3.1" stroke="currentColor" strokeWidth="1.3"/>
+    <circle cx="8" cy="8" r="1" fill="currentColor"/>
+  </svg>
+);
+export const IconInbox = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M2 9.5V12a1.5 1.5 0 001.5 1.5h9A1.5 1.5 0 0014 12V9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    <path d="M2 9.5h3.2l1 1.6h3.6l1-1.6H14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M8 2v5M5.8 5L8 7.2 10.2 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);

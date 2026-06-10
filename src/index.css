@@ -106,3 +106,32 @@ body {
 .bj-row-action.is-armed {
   opacity: 1;
 }
+
+/* Completion burst: six dots fly out from the click point and fade. */
+.bj-burst {
+  position: fixed;
+  z-index: 70;
+  pointer-events: none;
+}
+.bj-burst span {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  animation: bj-burst-dot 0.5s ease-out forwards;
+}
+@keyframes bj-burst-dot {
+  from { transform: rotate(var(--a)) translateX(4px) scale(1); opacity: 1; }
+  to   { transform: rotate(var(--a)) translateX(20px) scale(0.4); opacity: 0; }
+}
+
+/* One-shot scale pulse for the done-today counter (re-keyed per count). */
+.bj-pop {
+  display: inline-block;
+  animation: bj-pop 0.3s ease;
+}
+@keyframes bj-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}

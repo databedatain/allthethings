@@ -33,7 +33,7 @@ export default function NotesView({ data, t, fonts, onSetScratchpad, goToWeek, o
     borderRadius: "6px", padding: "8px 11px",
     fontFamily: fonts.body, fontSize: TYPE.body, color: t.textMuted,
   };
-  const weekTag = (wk) => (wk === cur ? "this week" : weekLabel(wk, true));
+  const weekTag = (wk) => (!wk ? "inbox" : wk === cur ? "this week" : weekLabel(wk, true));
   const clip = (s, n = 140) => (s.length > n ? s.slice(0, n) + "…" : s);
 
   return (

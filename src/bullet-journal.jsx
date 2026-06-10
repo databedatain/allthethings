@@ -5,6 +5,7 @@ import {
   rollIncompletes,
   withSampleWeeks,
   currentWeekKey,
+  todayKey,
   weekLabel,
   getDensity,
   MAX_TAGS,
@@ -68,6 +69,11 @@ export default function BulletJournal() {
   const [dragId, setDragId] = useState(null);
   const [overId, setOverId] = useState(null);
   const [confirmKey, setConfirmKey] = useState(null);
+  const [burst, setBurst] = useState(null);
+  const [spotlightId, setSpotlightId] = useState(null);
+  const [showInbox, setShowInbox] = useState(true);
+  const burstTimer = useRef(null);
+  const spotTimer = useRef(null);
   const saveTimer = useRef(null);
   const inputRef = useRef(null);
   const confirmTimer = useRef(null);
@@ -193,17 +199,35 @@ export default function BulletJournal() {
     inputRef.current?.focus();
   };
 
-  const changeStatus = (id, status) =>
-    update((d) => ({
-      ...d,
-      tasks: d.tasks.map((x) => {
-        if (x.id !== id) return x;
-        const next = { ...x, status };
-        const cur = currentWeekKey();
-        if (status !== "done" && next.week < cur) next.week = cur;
-        return next;
-      }),
-    }));
+  const changeStatus = (id, status, at) => {
+    // celebration is transient UI, fired before the row leaves the list
+    if (status === "done" && at) {
+      clearTimeout(burstTimer.current);
+      setBurst({ key: Date.now(), x: at.x, y: at.y });
+      burstTimer.current = setTimeout(() => setBurst(null), 600);
+    }
+    update((d) => {
+      const today = todayKey();
+      const target = d.tasks.find((x) => x.id === id);
+      let doneLog = d.doneLog || {};
+      if (target && status === "done" && target.status !== "done") {
+        doneLog = { ...doneLog, [today]: (doneLog[today] || 0) + 1 };
+      } else if (target && status !== "done" && target.status === "done") {
+        doneLog = { ...doneLog, [today]: Math.max(0, (doneLog[today] || 0) - 1) };
+      }
+      return {
+        ...d,
+        doneLog,
+        tasks: d.tasks.map((x) => {
+          if (x.id !== id) return x;
+          const next = { ...x, status };
+          const cur = currentWeekKey();
+          if (status !== "done" && next.week && next.week < cur) next.week = cur;
+          return next;
+        }),
+      };
+    });
+  };
 
   const editTask = (id, text) =>
     update((d) => ({
@@ -256,6 +280,32 @@ export default function BulletJournal() {
     }
   };
   const armedDelete = (id) => armOrRun(`del:${id}`, () => deleteTask(id));
+
+  // quick capture: no week, no tag, no decisions — triage later
+  const addToInbox = (text) =>
+    update((d) => {
+      const maxOrder = d.tasks.reduce((m, x) => Math.max(m, x.order ?? 0), 0);
+      return {
+        ...d,
+        tasks: [...d.tasks, {
+          id: d.nextId, text, status: "active", created: Date.now(),
+          week: null, starred: false, color: null, order: maxOrder + 1,
+        }],
+        nextId: d.nextId + 1,
+      };
+    });
+
+  // today's focus: up to three task ids, stamped with today — a stale stamp
+  // simply reads as empty, so the strip resets itself each morning
+  const toggleFocus = (id) =>
+    update((d) => {
+      const today = todayKey();
+      const ids = d.focus?.date === today ? d.focus.ids : [];
+      const next = ids.includes(id) ? ids.filter((x) => x !== id)
+        : ids.length >= 3 ? ids : [...ids, id];
+      if (next === ids) return d;
+      return { ...d, focus: { date: today, ids: next } };
+    });
 
   const toggleStar = (id) =>
     update((d) => ({
@@ -520,7 +570,7 @@ export default function BulletJournal() {
       return next;
     });
 
-  const weekSet = new Set(data.tasks.map((x) => x.week));
+  const weekSet = new Set(data.tasks.filter((x) => x.week).map((x) => x.week));
   weekSet.add(cur);
   const weeksDesc = [...weekSet].sort().reverse();
 
@@ -535,12 +585,32 @@ export default function BulletJournal() {
     return byMode(a, b);
   };
 
+  const inboxTasks = data.tasks.filter((x) => !x.week);
+  const focusIds = data.focus?.date === todayKey() ? data.focus.ids : [];
+  const focusSet = new Set(canAdd ? focusIds : []);
+  const focusTasks = focusIds
+    .map((id) => data.tasks.find((x) => x.id === id))
+    .filter(Boolean);
+
   const inView = isEverything
-    ? data.tasks
+    ? data.tasks.filter((x) => x.week)
     : data.tasks.filter((x) => x.week === selectedWeek);
-  const activeTasks = inView.filter((x) => x.status === "active").sort(cmp);
-  const holdTasks = inView.filter((x) => x.status === "hold").sort(cmp);
-  const doneTasks = inView.filter((x) => x.status === "done");
+  const activeTasks = inView.filter((x) => x.status === "active" && !focusSet.has(x.id)).sort(cmp);
+  const holdTasks = inView.filter((x) => x.status === "hold" && !focusSet.has(x.id)).sort(cmp);
+  const doneTasks = inView.filter((x) => x.status === "done" && !focusSet.has(x.id));
+  const doneToday = (data.doneLog || {})[todayKey()] || 0;
+
+  // decision paralysis breaker: chance picks, the ring shows where it landed
+  const pickForMe = () => {
+    const pool = [...focusTasks.filter((x) => x.status === "active"), ...activeTasks];
+    if (!pool.length) return;
+    const x = pool[Math.floor(Math.random() * pool.length)];
+    clearTimeout(spotTimer.current);
+    setSpotlightId(x.id);
+    spotTimer.current = setTimeout(() => setSpotlightId(null), 3000);
+    requestAnimationFrame(() =>
+      document.getElementById(`bj-task-${x.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+  };
 
   const clearDone = () =>
     update((d) => ({
@@ -636,6 +706,7 @@ export default function BulletJournal() {
       <TopBar t={t} fonts={fonts} query={query} setQuery={setQuery}
         searching={searching} selectedWeek={selectedWeek} cur={cur}
         weeksDesc={weeksDesc} goToWeek={goToWeek}
+        inboxCount={inboxTasks.length} onCapture={addToInbox}
         onOpenSettings={() => setSettingsOpen(true)} />
 
       {settingsOpen && (
@@ -648,6 +719,15 @@ export default function BulletJournal() {
             onFontFile, resetFont, loadSamples, armOrRun,
             restoreFromTrash, deleteForever, emptyTrash, exportData, onImportFile,
           }} />
+      )}
+
+      {burst && (
+        <span key={burst.key} className="bj-burst"
+          style={{ left: burst.x, top: burst.y }}>
+          {[0, 60, 120, 180, 240, 300].map((a) => (
+            <span key={a} style={{ "--a": `${a}deg`, background: t.accent }} />
+          ))}
+        </span>
       )}
 
       {/* ─── main ─── */}
@@ -672,7 +752,7 @@ export default function BulletJournal() {
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
                   {taskHits.map((x) => (
-                    <button key={x.id} onClick={() => goToWeek(x.week)}
+                    <button key={x.id} onClick={() => goToWeek(x.week || cur)}
                       style={{
                         textAlign: "left", cursor: "pointer",
                         background: t.surface, border: `1px solid ${t.border}`,
@@ -683,7 +763,7 @@ export default function BulletJournal() {
                       <span>{x.text}</span>
                       <span style={{ fontFamily: fonts.body, fontSize: TYPE.label,
                         color: t.textMuted, whiteSpace: "nowrap" }}>
-                        {x.week === cur ? "this week" : weekLabel(x.week, true)}
+                        {!x.week ? "inbox" : x.week === cur ? "this week" : weekLabel(x.week, true)}
                         {x.status === "done" ? " · done" : x.status === "hold" ? " · hold" : ""}
                       </span>
                     </button>
@@ -736,7 +816,7 @@ export default function BulletJournal() {
           <NotesView data={data} t={t} fonts={fonts}
             onSetScratchpad={setScratchpad} goToWeek={goToWeek}
             onOpenTask={(x) => {
-              goToWeek(x.week);
+              goToWeek(x.week || cur);
               setExpandedQ((prev) => new Set(prev).add(x.id));
             }} />
         ) : (
@@ -761,11 +841,99 @@ export default function BulletJournal() {
                 </h1>
               )}
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                {doneToday > 0 && (
+                  <span key={doneToday} className="bj-pop" title="Completed today"
+                    style={{ fontFamily: fonts.body, fontSize: TYPE.body,
+                      color: t.accentText2, fontWeight: 600, whiteSpace: "nowrap" }}>
+                    ✓ {doneToday} today
+                  </span>
+                )}
+                {(activeTasks.length + focusTasks.length) > 1 && (
+                  <button onClick={pickForMe} title="Can't choose? Let chance pick one"
+                    style={sortBtn(false)}>
+                    🎲 pick
+                  </button>
+                )}
                 {undoBtn("Undo", undo)}
                 {undoBtn("Redo", redo)}
                 {sortBar}
               </div>
             </div>
+
+            {/* inbox — captured thoughts waiting for a home */}
+            {canAdd && inboxTasks.length > 0 && (
+              <div style={{ marginBottom: "16px" }}>
+                <SectionToggle t={t} fonts={fonts} open={showInbox}
+                  onToggle={() => setShowInbox(!showInbox)}
+                  label={`inbox (${inboxTasks.length})`} />
+                {showInbox && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    {inboxTasks.map((x) => (
+                      <div key={x.id} className="bj-row" style={{
+                        display: "flex", alignItems: "center", gap: "8px",
+                        padding: `${ui.padY}px ${ui.padX + 6}px`,
+                        borderRadius: "6px", border: `1px dashed ${t.border}`,
+                        background: t.rowBase,
+                      }}>
+                        <span style={{ flex: 1, fontFamily: fonts.body,
+                          fontSize: `${ui.taskFont}px`, color: t.text }}>{x.text}</span>
+                        <button onClick={() => patchTask(x.id, { week: cur })}
+                          title="Move into this week"
+                          style={{ background: "none", border: "none", cursor: "pointer",
+                            fontFamily: fonts.body, fontSize: TYPE.label,
+                            color: t.question, whiteSpace: "nowrap", padding: "2px 4px" }}>
+                          → this week
+                        </button>
+                        <button onClick={() => armedDelete(x.id)}
+                          title={confirmKey === `del:${x.id}` ? "Click again to remove" : "Move to trash"}
+                          className={`bj-row-action${confirmKey === `del:${x.id}` ? " is-armed" : ""}`}
+                          style={{ background: "none", border: "none", cursor: "pointer",
+                            padding: "3px", color: confirmKey === `del:${x.id}` ? t.danger : t.textFaint,
+                            display: "flex", alignItems: "center", fontFamily: fonts.body,
+                            fontSize: confirmKey === `del:${x.id}` ? TYPE.caption : undefined,
+                            fontWeight: confirmKey === `del:${x.id}` ? 700 : undefined }}>
+                          {confirmKey === `del:${x.id}` ? "sure?" : "✕"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* today's focus — up to three, reset each morning */}
+            {canAdd && focusTasks.length > 0 && (
+              <div style={{ marginBottom: "16px" }}>
+                <div style={{
+                  fontFamily: fonts.heading, fontSize: TYPE.heading,
+                  color: t.textMuted, paddingBottom: SP.sm,
+                }}>
+                  ◎ today&apos;s focus
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: `${ui.taskGap}px` }}>
+                  {focusTasks.map((x) => x.status === "done" ? (
+                    <DoneRow key={x.id} task={x} t={t} fonts={fonts} ui={ui}
+                      confirmKey={confirmKey}
+                      onRestore={(id) => changeStatus(id, "active")}
+                      onDelete={armedDelete}/>
+                  ) : (
+                    <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} tags={data.tags} drag={drag}
+                      ui={ui} intensity={data.barIntensity || "medium"}
+                      isOver={false}
+                      onEdit={editTask} onSetColor={setTaskColor}
+                      onStatusChange={changeStatus} onDelete={armedDelete}
+                      onToggleStar={toggleStar} onCreateTag={createTagInline}
+                      onPatch={patchTask} onAddSubtask={addSubtask}
+                      onPatchSubtask={patchSubtask} onRemoveSubtask={removeSubtask}
+                      onPromoteSubtask={promoteSubtask}
+                      confirmKey={confirmKey}
+                      isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
+                      isFocused onToggleFocus={toggleFocus}
+                      isSpotlit={spotlightId === x.id}/>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* active tasks */}
             <div style={{ display: "flex", flexDirection: "column",
@@ -799,7 +967,10 @@ export default function BulletJournal() {
                   onPatchSubtask={patchSubtask} onRemoveSubtask={removeSubtask}
                   onPromoteSubtask={promoteSubtask}
                   confirmKey={confirmKey}
-                  isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}/>
+                  isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
+                  isFocused={focusSet.has(x.id)}
+                  onToggleFocus={canAdd ? toggleFocus : undefined}
+                  isSpotlit={spotlightId === x.id}/>
               ))}
             </div>
 
@@ -823,7 +994,10 @@ export default function BulletJournal() {
                         onPatchSubtask={patchSubtask} onRemoveSubtask={removeSubtask}
                         onPromoteSubtask={promoteSubtask}
                         confirmKey={confirmKey}
-                        isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}/>
+                        isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
+                        isFocused={focusSet.has(x.id)}
+                        onToggleFocus={canAdd ? toggleFocus : undefined}
+                        isSpotlit={spotlightId === x.id}/>
                     ))}
                   </div>
                 )}

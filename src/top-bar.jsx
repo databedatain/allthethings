@@ -1,11 +1,15 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { weekParts } from "./weeks.js";
-import { IconGear, IconHistory } from "./icons.jsx";
+import { IconGear, IconHistory, IconInbox } from "./icons.jsx";
 import { TYPE, CONTROL } from "./tokens.js";
 
 /* ─── top bar: search, navigation, week history popover, settings ─── */
-export default function TopBar({ t, fonts, query, setQuery, searching, selectedWeek, cur, weeksDesc, goToWeek, onOpenSettings }) {
+export default function TopBar({ t, fonts, query, setQuery, searching, selectedWeek, cur, weeksDesc, goToWeek, onOpenSettings, inboxCount, onCapture }) {
   const [histOpen, setHistOpen] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
+  const [capture, setCapture] = useState("");
+  const captureRef = useRef(null);
+  useEffect(() => { if (captureOpen) captureRef.current?.focus(); }, [captureOpen]);
   const isEverything = selectedWeek === "everything" && !searching;
   const isCurrent = selectedWeek === cur && !searching;
   const isNotes = selectedWeek === "notes" && !searching;
@@ -48,6 +52,53 @@ export default function TopBar({ t, fonts, query, setQuery, searching, selectedW
         <button style={navBtn(isNotes)} onClick={() => goToWeek("notes")}>
           ✎ notes
         </button>
+
+        {/* quick capture — zero decisions, lands in the inbox to sort later */}
+        <span style={{ position: "relative" }}>
+          <button style={navBtn(captureOpen)} onClick={() => setCaptureOpen((o) => !o)}
+            title="Quick capture — no week, no tag, no decisions">
+            <IconInbox size={14} />
+            {inboxCount > 0 ? `inbox (${inboxCount})` : "inbox"}
+          </button>
+          {captureOpen && (
+            <>
+              <div onClick={() => setCaptureOpen(false)}
+                style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+              <div style={{
+                position: "absolute", top: `${CONTROL.h + 8}px`, right: 0, zIndex: 41,
+                width: "min(280px, 86vw)", padding: "10px",
+                background: t.popover, border: `1px solid ${t.border}`,
+                borderRadius: 6, boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
+              }}>
+                <input
+                  ref={captureRef}
+                  value={capture}
+                  onChange={(e) => setCapture(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && capture.trim()) {
+                      onCapture(capture.trim());
+                      setCapture("");
+                    }
+                    if (e.key === "Escape") setCaptureOpen(false);
+                  }}
+                  placeholder="get it out of your head…"
+                  style={{
+                    width: "100%", padding: "7px 10px", borderRadius: CONTROL.radiusSm,
+                    border: `1px solid ${t.border}`, background: t.surface,
+                    fontFamily: fonts.body, fontSize: TYPE.body,
+                    outline: "none", color: t.text, boxSizing: "border-box",
+                  }}
+                />
+                <div style={{
+                  fontFamily: fonts.body, fontSize: TYPE.caption,
+                  color: t.textFaint, marginTop: "6px",
+                }}>
+                  enter to add — keep going, sort it out later
+                </div>
+              </div>
+            </>
+          )}
+        </span>
 
         {/* week history — jump to any past week */}
         <span style={{ position: "relative" }}>
