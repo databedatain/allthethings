@@ -19,7 +19,7 @@ import {
   fontStack,
   loadCatalogFonts,
 } from "./font.js";
-import { buildTheme, rgba, rowFill, resolveColor, colorToken, presetBg, PRESETS, getPalette } from "./theme.js";
+import { buildTheme, rgba, rowFill, getIntensity, resolveColor, colorToken, presetBg, PRESETS, getPalette } from "./theme.js";
 import { TYPE, SP, CONTROL } from "./tokens.js";
 import ColorPicker from "./color-picker.jsx";
 import { IconCheck, IconPause, IconPlus, IconTrash, IconUndo, IconQuestion, IconStar, IconGrip } from "./icons.jsx";
@@ -37,7 +37,7 @@ const formatDate = (ts) => {
 };
 
 /* ─── task row ─── */
-function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onUpdateQuestion, isQExpanded, onToggleQ }) {
+function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intensity, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onUpdateQuestion, isQExpanded, onToggleQ }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.text);
   const isHold = task.status === "hold";
@@ -51,10 +51,10 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, o
 
   // tag (task.color) or hold owns the row tint; star is just the bold outline
   const tint = task.color
-    ? rowFill(taskColor, t.dark)
+    ? rowFill(taskColor, t.dark, intensity)
     : isHold ? t.holdFill : t.rowBase;
   const border = task.color
-    ? `1px solid ${rgba(taskColor, 0.5)}`
+    ? `1px solid ${rgba(taskColor, getIntensity(intensity).borderA)}`
     : isHold ? `1px dashed ${t.holdBorder}`
     : `1px solid ${t.border}`;
   const starOutline = isStar ? `inset 0 0 0 2px ${t.star}` : undefined;
@@ -322,7 +322,7 @@ function DoneRow({ task, t, fonts, ui, confirmKey, onRestore, onDelete }) {
 }
 
 /* ─── add-task row (looks like a task row, with a + commit and inline controls) ─── */
-function AddTaskRow({ t, fonts, colors, tags, ui, draft, onChange, onCommit, onReset, onCreateTag, inputRef, dragEnabled }) {
+function AddTaskRow({ t, fonts, colors, tags, ui, intensity, draft, onChange, onCommit, onReset, onCreateTag, inputRef, dragEnabled }) {
   const isHold = draft.status === "hold";
   const isStar = !!draft.starred;
   const hasQ = draft.questionWho || draft.questionText;
@@ -333,10 +333,10 @@ function AddTaskRow({ t, fonts, colors, tags, ui, draft, onChange, onCommit, onR
     draft.status === "hold" || draft.questionWho || draft.questionText || draft.showQ);
 
   const tint = draft.color
-    ? rowFill(draftColor, t.dark)
+    ? rowFill(draftColor, t.dark, intensity)
     : isHold ? t.holdFill : t.rowBase;
   const border = draft.color
-    ? `1px solid ${rgba(draftColor, 0.5)}`
+    ? `1px solid ${rgba(draftColor, getIntensity(intensity).borderA)}`
     : isHold ? `1px dashed ${t.holdBorder}`
     : `1px dashed ${t.border}`;
   const starOutline = isStar ? `inset 0 0 0 2px ${t.star}` : undefined;
@@ -791,6 +791,8 @@ export default function BulletJournal() {
   const setDensity = (id) =>
     update((d) => ({ ...d, density: id, taskFont: getDensity(id).taskFont }));
 
+  const setBarIntensity = (id) => update((d) => ({ ...d, barIntensity: id }));
+
   const setTaskFont = (value) => update((d) => ({ ...d, taskFont: value }));
 
   const setHeadingFont = (id) => update((d) => ({ ...d, headingFont: id }));
@@ -1062,7 +1064,7 @@ export default function BulletJournal() {
           paletteColors={paletteColors} confirmKey={confirmKey}
           onClose={() => setSettingsOpen(false)}
           actions={{
-            setThemeKey, applyPreset, selectPalette, setDensity, setTaskFont,
+            setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setTaskFont,
             setHeadingFont, setBodyFont, addTag, removeTag, setTagName, setTagColor,
             onFontFile, resetFont, loadSamples, armOrRun,
             restoreFromTrash, deleteForever, emptyTrash, exportData, onImportFile,
@@ -1170,7 +1172,7 @@ export default function BulletJournal() {
               gap: `${ui.taskGap}px`, marginBottom: "16px" }}>
               {canAdd && (
                 <AddTaskRow t={t} fonts={fonts} colors={paletteColors} tags={data.tags}
-                  ui={ui} draft={draft} onChange={updateDraft} onCommit={commitDraft}
+                  ui={ui} intensity={data.barIntensity || "medium"} draft={draft} onChange={updateDraft} onCommit={commitDraft}
                   onReset={() => setDraft({ text: "", color: null, starred: false,
                     status: "active", questionWho: "", questionText: "", showQ: false })}
                   onCreateTag={createTagInline} inputRef={inputRef}
@@ -1188,7 +1190,7 @@ export default function BulletJournal() {
               )}
               {activeTasks.map((x) => (
                 <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} tags={data.tags} drag={drag}
-                  ui={ui}
+                  ui={ui} intensity={data.barIntensity || "medium"}
                   isOver={dragEnabled && overId === x.id && dragId !== x.id}
                   onEdit={editTask} onSetColor={setTaskColor}
                   onStatusChange={changeStatus} onDelete={armedDelete}
@@ -1209,7 +1211,7 @@ export default function BulletJournal() {
                     gap: `${ui.taskGap}px` }}>
                     {holdTasks.map((x) => (
                       <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} tags={data.tags} drag={drag}
-                        ui={ui}
+                        ui={ui} intensity={data.barIntensity || "medium"}
                         isOver={dragEnabled && overId === x.id && dragId !== x.id}
                         onEdit={editTask} onSetColor={setTaskColor}
                         onStatusChange={changeStatus} onDelete={armedDelete}

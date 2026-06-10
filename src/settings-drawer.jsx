@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import ColorPicker from "./color-picker.jsx";
 import { IconSun, IconMoon, IconUndo, IconX } from "./icons.jsx";
-import { PRESETS, PALETTES, getPalette, resolveColor } from "./theme.js";
+import { PRESETS, PALETTES, ROW_INTENSITIES, getPalette, resolveColor } from "./theme.js";
 import { DENSITIES, MAX_TAGS } from "./weeks.js";
 import { FONTS } from "./font.js";
 import { TYPE, SP, CONTROL } from "./tokens.js";
@@ -102,7 +102,7 @@ function FontSelect({ value, onChange, hasCustom, t }) {
 /* ─── settings slide-over: appearance, tags, fonts, data, trash ─── */
 export default function SettingsDrawer({ t, fonts, data, fontName, paletteColors, confirmKey, onClose, actions }) {
   const {
-    setThemeKey, applyPreset, selectPalette, setDensity, setTaskFont,
+    setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setTaskFont,
     setHeadingFont, setBodyFont, addTag, removeTag, setTagName, setTagColor,
     onFontFile, resetFont, loadSamples, armOrRun,
     restoreFromTrash, deleteForever, emptyTrash, exportData, onImportFile,
@@ -301,6 +301,21 @@ export default function SettingsDrawer({ t, fonts, data, fontName, paletteColors
                       : i === DENSITIES.length - 1 ? "0 5px 5px 0" : 0,
                     borderLeft: i === 0 ? `1px solid ${t.border}` : "none",
                   }}>{dn.id}</button>
+              ))}
+            </div>
+          </div>
+          {/* row tint intensity */}
+          <div>
+            <div style={{ ...settingRow, marginBottom: "4px" }}>bar colour</div>
+            <div style={{ display: "flex" }}>
+              {ROW_INTENSITIES.map((s, i) => (
+                <button key={s.id} onClick={() => setBarIntensity(s.id)}
+                  style={{
+                    ...segBtn((data.barIntensity || "medium") === s.id),
+                    borderRadius: i === 0 ? "5px 0 0 5px"
+                      : i === ROW_INTENSITIES.length - 1 ? "0 5px 5px 0" : 0,
+                    borderLeft: i === 0 ? `1px solid ${t.border}` : "none",
+                  }}>{s.id}</button>
               ))}
             </div>
           </div>

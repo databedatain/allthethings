@@ -123,13 +123,28 @@ export function shades(hex) {
   return SHADE_STEPS.map((a) => (a ? lighten(hex, a) : hex));
 }
 
+// Row-tint intensity steps ("bar colour" in settings). `light`/`dark` are the
+// lighten/darken factors fed to rowFill — a larger factor pulls the fill
+// further toward the page background, so "subtle" uses the biggest one.
+// `borderA` is the matching row-border alpha. Medium is the historical look.
+export const ROW_INTENSITIES = [
+  { id: "subtle", light: 0.62, dark: 0.6, borderA: 0.35 },
+  { id: "medium", light: 0.4,  dark: 0.4, borderA: 0.5 },
+  { id: "bold",   light: 0.22, dark: 0.3, borderA: 0.7 },
+];
+
+export function getIntensity(id) {
+  return ROW_INTENSITIES.find((x) => x.id === id) || ROW_INTENSITIES[1];
+}
+
 // solid fill for a tagged task row. Replaces the old rgba() wash: painting the
 // tint as an opaque colour (rather than compositing a low-alpha layer through
 // the translucent surface + gradient) keeps the colour true instead of
 // double-diluting it into mush. Light mode lightens toward a pale card; dark
 // mode darkens toward a deep one — both keep body text legible on top.
-export function rowFill(hex, dark) {
-  return dark ? darken(hex, 0.4) : lighten(hex, 0.4);
+export function rowFill(hex, dark, intensity = "medium") {
+  const s = getIntensity(intensity);
+  return dark ? darken(hex, s.dark) : lighten(hex, s.light);
 }
 
 // Colour tokens. A stored colour (on a task or a tag) is either:

@@ -68,6 +68,7 @@ export function defaultData() {
     tags: [],
     sortMode: "custom",
     sortOrder: "oldest",
+    barIntensity: "medium",
     nextId: 1,
     theme: { ...THEME_DEFAULTS },
     palette: "default",
