@@ -151,6 +151,7 @@ export default function BulletJournal() {
       const tag = (e.target.tagName || "").toLowerCase();
       if (e.key === "Escape") {
         if (settingsOpen) { setSettingsOpen(false); e.preventDefault(); }
+        else setExpandedQ((p) => (p.size ? new Set() : p));
         return;
       }
       if (tag === "input" || tag === "textarea") return;
@@ -166,6 +167,22 @@ export default function BulletJournal() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [undo, redo, settingsOpen]);
+
+  // clicking away from an open detail panel closes it; clicks inside the
+  // expanded row (or inside popover overlays) keep it open
+  useEffect(() => {
+    const onDown = (e) => {
+      setExpandedQ((prev) => {
+        if (!prev.size) return prev;
+        if (e.target.closest?.("[data-bj-keep-open]")) return prev;
+        const host = e.target.closest?.("[data-bj-task]");
+        if (host && prev.has(Number(host.getAttribute("data-bj-task")))) return prev;
+        return new Set();
+      });
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
 
   const theme = data ? buildTheme(data.theme) : buildTheme({});
 
@@ -701,6 +718,13 @@ export default function BulletJournal() {
 
   const goToWeek = (wk) => { setSelectedWeek(wk); setQuery(""); };
 
+  // detail-panel handlers bundled for DoneRow's in-place panel
+  const panelProps = {
+    onSetMeeting: setMeeting, onPatch: patchTask, onAddSubtask: addSubtask,
+    onPatchSubtask: patchSubtask, onRemoveSubtask: removeSubtask,
+    onPromoteSubtask: promoteSubtask,
+  };
+
   /* ── shared style helpers ── */
   const sortBtn = (active) => ({
     background: "none", border: "none", cursor: "pointer", padding: "2px 0",
@@ -945,9 +969,11 @@ export default function BulletJournal() {
                 <div style={{ display: "flex", flexDirection: "column", gap: `${ui.taskGap}px` }}>
                   {focusTasks.map((x) => x.status === "done" ? (
                     <DoneRow key={x.id} task={x} t={t} fonts={fonts} ui={ui}
-                      confirmKey={confirmKey}
+                      tags={data.tags} confirmKey={confirmKey}
                       onRestore={(id) => changeStatus(id, "active")}
-                      onDelete={armedDelete}/>
+                      onDelete={armedDelete}
+                      isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
+                      panelProps={panelProps}/>
                   ) : (
                     <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} tags={data.tags} drag={drag}
                       ui={ui} intensity={data.barIntensity || "medium"}
@@ -1053,9 +1079,11 @@ export default function BulletJournal() {
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                     {doneTasks.map((x) => (
                       <DoneRow key={x.id} task={x} t={t} fonts={fonts} ui={ui}
-                        confirmKey={confirmKey}
+                        tags={data.tags} confirmKey={confirmKey}
                         onRestore={(id) => changeStatus(id, "active")}
-                        onDelete={armedDelete}/>
+                        onDelete={armedDelete}
+                        isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
+                        panelProps={panelProps}/>
                     ))}
                     {!isEverything && (
                       <button onClick={clearDone} style={{
