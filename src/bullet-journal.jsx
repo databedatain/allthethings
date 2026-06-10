@@ -151,6 +151,7 @@ export default function BulletJournal() {
       const tag = (e.target.tagName || "").toLowerCase();
       if (e.key === "Escape") {
         if (settingsOpen) { setSettingsOpen(false); e.preventDefault(); }
+        else setExpandedQ((p) => (p.size ? new Set() : p));
         return;
       }
       if (tag === "input" || tag === "textarea") return;
@@ -167,7 +168,23 @@ export default function BulletJournal() {
     return () => window.removeEventListener("keydown", onKey);
   }, [undo, redo, settingsOpen]);
 
-  const theme = data ? buildTheme(data.theme) : buildTheme({});
+  // clicking away from an open detail panel closes it; clicks inside the
+  // expanded row (or inside popover overlays) keep it open
+  useEffect(() => {
+    const onDown = (e) => {
+      setExpandedQ((prev) => {
+        if (!prev.size) return prev;
+        if (e.target.closest?.("[data-bj-keep-open]")) return prev;
+        const host = e.target.closest?.("[data-bj-task]");
+        if (host && prev.has(Number(host.getAttribute("data-bj-task")))) return prev;
+        return new Set();
+      });
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  const theme = data ? buildTheme(data.theme, data.colorPresence || "full") : buildTheme({});
 
   // keep the page background in sync with the theme
   useEffect(() => {
@@ -365,6 +382,7 @@ export default function BulletJournal() {
     update((d) => ({ ...d, density: id, taskFont: getDensity(id).taskFont }));
 
   const setBarIntensity = (id) => update((d) => ({ ...d, barIntensity: id }));
+  const setColorPresence = (id) => update((d) => ({ ...d, colorPresence: id }));
 
   const setTaskFont = (value) => update((d) => ({ ...d, taskFont: value }));
 
@@ -448,6 +466,38 @@ export default function BulletJournal() {
       tasks: d.tasks.map((x) => (x.id === taskId
         ? { ...x, subtasks: (x.subtasks || []).filter((s) => s.id !== subId) }
         : x)),
+    }));
+
+  // meeting-ness rides on the meeting tag: turning it on applies that tag
+  // (creating one on first use); turning it off just unTags the task
+  const setMeeting = (taskId, on) =>
+    update((d) => {
+      if (!on) {
+        return { ...d, tasks: d.tasks.map((x) => (x.id === taskId ? { ...x, color: null } : x)) };
+      }
+      let tags = d.tags || [];
+      let mtag = tags.find((tg) => tg.kind === "meeting");
+      if (!mtag) {
+        const used = new Set(tags.map((tg) => tg.color));
+        const pal = getPalette(d.palette).colors;
+        const color = pal.map((_, i) => `slot:${i}`).find((tok) => !used.has(tok)) || "slot:0";
+        mtag = { color, name: "meeting", kind: "meeting" };
+        tags = [...tags, mtag];
+      }
+      return {
+        ...d,
+        tags,
+        tasks: d.tasks.map((x) => (x.id === taskId
+          ? { ...x, color: mtag.color, meeting: x.meeting || { attendees: "" } }
+          : x)),
+      };
+    });
+
+  const setTagKind = (color, kind) =>
+    update((d) => ({
+      ...d,
+      tags: (d.tags || []).map((tg) =>
+        tg.color === color ? { ...tg, kind: kind || undefined } : tg),
     }));
 
   // a meeting action item (or any sub-step) graduates into a real task in the
@@ -669,6 +719,13 @@ export default function BulletJournal() {
 
   const goToWeek = (wk) => { setSelectedWeek(wk); setQuery(""); };
 
+  // detail-panel handlers bundled for DoneRow's in-place panel
+  const panelProps = {
+    onSetMeeting: setMeeting, onPatch: patchTask, onAddSubtask: addSubtask,
+    onPatchSubtask: patchSubtask, onRemoveSubtask: removeSubtask,
+    onPromoteSubtask: promoteSubtask,
+  };
+
   /* ── shared style helpers ── */
   const sortBtn = (active) => ({
     background: "none", border: "none", cursor: "pointer", padding: "2px 0",
@@ -714,8 +771,8 @@ export default function BulletJournal() {
           paletteColors={paletteColors} confirmKey={confirmKey}
           onClose={() => setSettingsOpen(false)}
           actions={{
-            setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setTaskFont,
-            setHeadingFont, setBodyFont, addTag, removeTag, setTagName, setTagColor,
+            setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setColorPresence, setTaskFont,
+            setHeadingFont, setBodyFont, addTag, removeTag, setTagName, setTagColor, setTagKind,
             onFontFile, resetFont, loadSamples, armOrRun,
             restoreFromTrash, deleteForever, emptyTrash, exportData, onImportFile,
           }} />
@@ -725,7 +782,7 @@ export default function BulletJournal() {
         <span key={burst.key} className="bj-burst"
           style={{ left: burst.x, top: burst.y }}>
           {[0, 60, 120, 180, 240, 300].map((a) => (
-            <span key={a} style={{ "--a": `${a}deg`, background: t.accent }} />
+            <span key={a} style={{ "--a": `${a}deg`, background: t.celebrate }} />
           ))}
         </span>
       )}
@@ -913,9 +970,11 @@ export default function BulletJournal() {
                 <div style={{ display: "flex", flexDirection: "column", gap: `${ui.taskGap}px` }}>
                   {focusTasks.map((x) => x.status === "done" ? (
                     <DoneRow key={x.id} task={x} t={t} fonts={fonts} ui={ui}
-                      confirmKey={confirmKey}
+                      tags={data.tags} confirmKey={confirmKey}
                       onRestore={(id) => changeStatus(id, "active")}
-                      onDelete={armedDelete}/>
+                      onDelete={armedDelete}
+                      isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
+                      panelProps={panelProps}/>
                   ) : (
                     <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} tags={data.tags} drag={drag}
                       ui={ui} intensity={data.barIntensity || "medium"}
@@ -925,7 +984,7 @@ export default function BulletJournal() {
                       onToggleStar={toggleStar} onCreateTag={createTagInline}
                       onPatch={patchTask} onAddSubtask={addSubtask}
                       onPatchSubtask={patchSubtask} onRemoveSubtask={removeSubtask}
-                      onPromoteSubtask={promoteSubtask}
+                      onPromoteSubtask={promoteSubtask} onSetMeeting={setMeeting}
                       confirmKey={confirmKey}
                       isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
                       isFocused onToggleFocus={toggleFocus}
@@ -965,7 +1024,7 @@ export default function BulletJournal() {
                   onToggleStar={toggleStar} onCreateTag={createTagInline}
                   onPatch={patchTask} onAddSubtask={addSubtask}
                   onPatchSubtask={patchSubtask} onRemoveSubtask={removeSubtask}
-                  onPromoteSubtask={promoteSubtask}
+                  onPromoteSubtask={promoteSubtask} onSetMeeting={setMeeting}
                   confirmKey={confirmKey}
                   isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
                   isFocused={focusSet.has(x.id)}
@@ -992,7 +1051,7 @@ export default function BulletJournal() {
                         onToggleStar={toggleStar} onCreateTag={createTagInline}
                         onPatch={patchTask} onAddSubtask={addSubtask}
                         onPatchSubtask={patchSubtask} onRemoveSubtask={removeSubtask}
-                        onPromoteSubtask={promoteSubtask}
+                        onPromoteSubtask={promoteSubtask} onSetMeeting={setMeeting}
                         confirmKey={confirmKey}
                         isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
                         isFocused={focusSet.has(x.id)}
@@ -1021,9 +1080,11 @@ export default function BulletJournal() {
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                     {doneTasks.map((x) => (
                       <DoneRow key={x.id} task={x} t={t} fonts={fonts} ui={ui}
-                        confirmKey={confirmKey}
+                        tags={data.tags} confirmKey={confirmKey}
                         onRestore={(id) => changeStatus(id, "active")}
-                        onDelete={armedDelete}/>
+                        onDelete={armedDelete}
+                        isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
+                        panelProps={panelProps}/>
                     ))}
                     {!isEverything && (
                       <button onClick={clearDone} style={{

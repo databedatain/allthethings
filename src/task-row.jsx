@@ -11,16 +11,18 @@ const formatDate = (ts) => {
 };
 
 /* ─── task row ─── */
-export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intensity, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask, isExpanded, onToggleDetail, isFocused, onToggleFocus, isSpotlit }) {
+export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intensity, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask, onSetMeeting, isExpanded, onToggleDetail, isFocused, onToggleFocus, isSpotlit }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.text);
   const isHold = task.status === "hold";
   const isStar = !!task.starred;
-  const isMeeting = task.kind === "meeting";
+  // a task is a meeting when its tag is meeting-flavored
+  const isMeeting = tags?.find((tg) => tg.color === task.color)?.kind === "meeting";
   const subs = task.subtasks || [];
   const subsDone = subs.filter((s) => s.done).length;
   const hasDetail = !!(task.questionWho || task.questionText || task.note ||
     subs.length || isMeeting);
+
   const tagOnTask = tags?.find((tg) => tg.color === task.color && tg.name?.trim());
   // tokens resolve to a concrete hex against the active palette for display.
   // resolvedTags feeds the (hex-based) ColorPicker its tag shortcuts.
@@ -53,7 +55,7 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
   };
 
   return (
-    <div id={`bj-task-${task.id}`} style={{ display: "flex", flexDirection: "column" }}>
+    <div id={`bj-task-${task.id}`} data-bj-task={task.id} style={{ display: "flex", flexDirection: "column" }}>
       <div
         className="bj-row"
         draggable={drag.enabled && !editing}
@@ -87,9 +89,7 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
             border: `1.5px solid ${t.textFaint}`, background: "transparent",
             display: "flex", alignItems: "center", justifyContent: "center",
             color: t.accent, flexShrink: 0, padding: 0,
-          }}>
-          <span style={{ opacity: 0.32 }}><IconCheck size={ui.innerCheck} /></span>
-        </button>
+          }} />
 
         {/* meeting marker */}
         {isMeeting && (
@@ -135,42 +135,19 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
           tags={resolvedTags} onCreateTag={onCreateTag}
           onChange={(c) => onSetColor(task.id, c)}
           renderTrigger={(toggle) => {
-            const pillFont = `${Math.max(10, ui.taskFont - 5)}px`;
-            const padding = "1px 8px";
-            const radius = CONTROL.pill;
-            if (tagOnTask) {
-              const tagHex = resolveColor(tagOnTask.color, colors);
-              return (
-                <button onClick={toggle} title={`Tag: ${tagOnTask.name}`}
-                  style={{
-                    fontFamily: fonts.body, fontSize: pillFont, padding, borderRadius: radius,
-                    background: rgba(tagHex, t.dark ? 0.28 : 0.18),
-                    color: t.text,
-                    border: `1px solid ${rgba(tagHex, 0.55)}`,
-                    cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
-                  }}>{tagOnTask.name}</button>
-              );
-            }
-            if (task.color) {
-              return (
-                <button onClick={toggle} title="Tag colour (click to rename)"
-                  style={{
-                    fontFamily: fonts.body, fontSize: pillFont, padding, borderRadius: radius,
-                    background: rgba(taskColor, t.dark ? 0.28 : 0.18),
-                    color: t.textMuted,
-                    border: `1px solid ${rgba(taskColor, 0.55)}`,
-                    cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
-                  }}>—</button>
-              );
-            }
+            const dot = Math.max(10, Math.round(ui.taskFont * 0.55));
             return (
-              <button onClick={toggle} title="Add tag"
+              <button onClick={toggle}
+                title={tagOnTask ? `Tag: ${tagOnTask.name}` : task.color ? "Tag colour" : "Add tag"}
+                className={task.color ? undefined : "bj-row-action"}
                 style={{
-                  fontFamily: fonts.body, fontSize: pillFont, padding, borderRadius: radius,
-                  background: "transparent", color: t.textFaint,
-                  border: `1px dashed ${t.border}`,
-                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
-                }}>tag</button>
+                  width: dot, height: dot, borderRadius: "50%", padding: 0,
+                  cursor: "pointer", flexShrink: 0,
+                  background: task.color ? taskColor : "transparent",
+                  border: task.color
+                    ? `1px solid ${rgba(taskColor, 0.7)}`
+                    : `1.5px dashed ${t.textFaint}`,
+                }} />
             );
           }}
         />
@@ -196,11 +173,19 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
             }}>↻{task.rolled}w</span>
         )}
 
-        {/* date */}
-        <span style={{
+        {/* date — present on hover, out of the way otherwise */}
+        <span className="bj-row-action" style={{
           fontFamily: fonts.body, fontSize: `${ui.date}px`,
           color: t.textMuted, flexShrink: 0, whiteSpace: "nowrap", marginRight: "4px",
         }}>{formatDate(task.created)}</span>
+
+        {/* detail toggle — visible when the task carries notes/subtasks/meeting */}
+        <button onClick={() => onToggleDetail(task.id)}
+          title={isExpanded ? "Collapse details" : "Notes, action items, meeting"}
+          className={hasDetail ? undefined : "bj-row-action"}
+          style={{ ...iconBtn, color: hasDetail ? t.question : t.textFaint }}>
+          <IconNote size={ui.icon} />
+        </button>
 
         {/* today's focus — a set target stays visible like a set star */}
         {onToggleFocus && (
@@ -217,14 +202,6 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
           className={isStar ? undefined : "bj-row-action"}
           style={{ ...iconBtn, color: isStar ? t.star : t.textFaint }}>
           <IconStar filled={isStar} size={ui.star} />
-        </button>
-
-        {/* detail toggle — visible when the task carries notes/subtasks/meeting */}
-        <button onClick={() => onToggleDetail(task.id)}
-          title={isExpanded ? "Collapse details" : "Notes, sub-checklist, meeting"}
-          className={hasDetail ? undefined : "bj-row-action"}
-          style={{ ...iconBtn, color: hasDetail ? t.question : t.textFaint }}>
-          <IconNote size={ui.icon} />
         </button>
 
         {/* hold toggle — visible while on hold (resume affordance) */}
@@ -263,6 +240,7 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
       {/* collapsible detail panel */}
       {isExpanded && (
         <TaskDetailPanel task={task} t={t} fonts={fonts} ui={ui}
+          isMeeting={isMeeting} onSetMeeting={onSetMeeting}
           onPatch={onPatch} onAddSubtask={onAddSubtask}
           onPatchSubtask={onPatchSubtask} onRemoveSubtask={onRemoveSubtask}
           onPromoteSubtask={onPromoteSubtask} />
@@ -272,12 +250,17 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
 }
 
 /* ─── done row ─── */
-export function DoneRow({ task, t, fonts, ui, confirmKey, onRestore, onDelete }) {
+export function DoneRow({ task, t, fonts, ui, tags, confirmKey, onRestore, onDelete, isExpanded, onToggleDetail, panelProps }) {
+  const isMeeting = tags?.find((tg) => tg.color === task.color)?.kind === "meeting";
+  const hasDetail = !!(task.questionWho || task.questionText || task.note ||
+    task.subtasks?.length || isMeeting);
   return (
+    <div data-bj-task={task.id} style={{ display: "flex", flexDirection: "column" }}>
     <div className="bj-row" style={{
       display: "flex", alignItems: "center", gap: "9px",
-      padding: `${Math.max(2, ui.padY - 1)}px ${ui.padX + 6}px`, borderRadius: CONTROL.radiusSm,
-      background: t.accentSoft,
+      padding: `${Math.max(2, ui.padY - 1)}px ${ui.padX + 6}px`,
+      borderRadius: isExpanded ? "4px 4px 0 0" : CONTROL.radiusSm,
+      background: t.doneFill || t.accentSoft,
     }}>
       {/* checked box — uncheck to move back to active */}
       <button onClick={() => onRestore(task.id)} title="Uncheck — move back to active"
@@ -295,6 +278,18 @@ export function DoneRow({ task, t, fonts, ui, confirmKey, onRestore, onDelete })
       <span style={{
         fontFamily: fonts.body, fontSize: `${Math.round(ui.date * 0.94)}px`, color: t.textFaint,
       }}>{formatDate(task.created)}</span>
+      {onToggleDetail && (
+        <button onClick={() => onToggleDetail(task.id)}
+          title={isExpanded ? "Collapse details" : "Notes, action items"}
+          className={hasDetail ? undefined : "bj-row-action"}
+          style={{
+            background: "none", border: "none", cursor: "pointer", padding: "3px",
+            color: hasDetail ? t.question : t.textFaint,
+            display: "flex", alignItems: "center",
+          }}>
+          <IconNote size={ui.icon} />
+        </button>
+      )}
       <button onClick={() => onDelete(task.id)}
         title={confirmKey === `del:${task.id}` ? "Click again to remove" : "Move to trash"}
         className={`bj-row-action${confirmKey === `del:${task.id}` ? " is-armed" : ""}`}
@@ -308,6 +303,11 @@ export function DoneRow({ task, t, fonts, ui, confirmKey, onRestore, onDelete })
         }}>
         {confirmKey === `del:${task.id}` ? "sure?" : <IconTrash size={ui.icon} />}
       </button>
+    </div>
+    {isExpanded && panelProps && (
+      <TaskDetailPanel task={task} t={t} fonts={fonts} ui={ui}
+        isMeeting={isMeeting} {...panelProps} />
+    )}
     </div>
   );
 }
@@ -336,9 +336,6 @@ export function AddTaskRow({ t, fonts, colors, tags, ui, intensity, draft, onCha
     background: "none", border: "none", cursor: "pointer",
     padding: `${ui.btnPad}px`, display: "flex", alignItems: "center",
   };
-  const pillFont = `${Math.max(10, ui.taskFont - 5)}px`;
-  const pillPad = "1px 8px";
-  const pillRadius = CONTROL.pill;
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -389,53 +386,34 @@ export function AddTaskRow({ t, fonts, colors, tags, ui, intensity, draft, onCha
           tags={resolvedTags} onCreateTag={onCreateTag}
           onChange={(c) => onChange({ color: colorToken(c, colors) })}
           renderTrigger={(toggle) => {
-            if (tagOnDraft) {
-              const tagHex = resolveColor(tagOnDraft.color, colors);
-              return (
-              <button onClick={toggle} title={`Tag: ${tagOnDraft.name}`}
-                style={{
-                  fontFamily: fonts.body, fontSize: pillFont, padding: pillPad, borderRadius: pillRadius,
-                  background: rgba(tagHex, t.dark ? 0.28 : 0.18),
-                  color: t.text,
-                  border: `1px solid ${rgba(tagHex, 0.55)}`,
-                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
-                }}>{tagOnDraft.name}</button>
-            );
-            }
-            if (draft.color) return (
-              <button onClick={toggle} title="Tag colour (click to rename)"
-                style={{
-                  fontFamily: fonts.body, fontSize: pillFont, padding: pillPad, borderRadius: pillRadius,
-                  background: rgba(draftColor, t.dark ? 0.28 : 0.18),
-                  color: t.textMuted,
-                  border: `1px solid ${rgba(draftColor, 0.55)}`,
-                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
-                }}>—</button>
-            );
+            const dot = Math.max(10, Math.round(ui.taskFont * 0.55));
             return (
-              <button onClick={toggle} title="Add tag"
+              <button onClick={toggle}
+                title={tagOnDraft ? `Tag: ${tagOnDraft.name}` : draft.color ? "Tag colour" : "Add tag"}
                 style={{
-                  fontFamily: fonts.body, fontSize: pillFont, padding: pillPad, borderRadius: pillRadius,
-                  background: "transparent", color: t.textFaint,
-                  border: `1px dashed ${t.border}`,
-                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
-                }}>tag</button>
+                  width: dot, height: dot, borderRadius: "50%", padding: 0,
+                  cursor: "pointer", flexShrink: 0,
+                  background: draft.color ? draftColor : "transparent",
+                  border: draft.color
+                    ? `1px solid ${rgba(draftColor, 0.7)}`
+                    : `1.5px dashed ${t.textFaint}`,
+                }} />
             );
           }}
         />
-
-        {/* star */}
-        <button onClick={() => onChange({ starred: !isStar })}
-          title={isStar ? "Unstar" : "Star"}
-          style={{ ...iconBtn, color: isStar ? t.star : t.textFaint }}>
-          <IconStar filled={isStar} size={ui.star} />
-        </button>
 
         {/* question */}
         <button onClick={() => onChange({ showQ: !draft.showQ })}
           title={draft.showQ ? "Hide question" : "Add question"}
           style={{ ...iconBtn, color: hasQ ? t.question : t.textFaint }}>
           <IconQuestion size={ui.icon} />
+        </button>
+
+        {/* star */}
+        <button onClick={() => onChange({ starred: !isStar })}
+          title={isStar ? "Unstar" : "Star"}
+          style={{ ...iconBtn, color: isStar ? t.star : t.textFaint }}>
+          <IconStar filled={isStar} size={ui.star} />
         </button>
 
         {/* hold */}
@@ -501,14 +479,18 @@ export function AddTaskRow({ t, fonts, colors, tags, ui, intensity, draft, onCha
 }
 
 
-/* ─── per-task detail panel: note, sub-checklist, who/ask, meeting ───
- * A meeting is the same task wearing a different hat: attendees join the
- * note, and the sub-checklist relabels to action items. */
-export function TaskDetailPanel({ task, t, fonts, ui, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask }) {
-  const [subDraft, setSubDraft] = useState("");
-  const isMeeting = task.kind === "meeting";
+/* ─── per-task detail panel: note, then trigger pills for the optional
+ * sections — meeting | action items | questions. A meeting is the same task
+ * wearing the meeting tag: attendees appear and the checklist relabels in
+ * spirit (it's always "action items" now). */
+export function TaskDetailPanel({ task, t, fonts, ui, isMeeting, onSetMeeting, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask }) {
   const subs = task.subtasks || [];
   const subsDone = subs.filter((s) => s.done).length;
+  const hasQ = !!(task.questionWho || task.questionText);
+  const [subDraft, setSubDraft] = useState("");
+  // sections with content start open; empty ones wait behind their pill
+  const [showActions, setShowActions] = useState(subs.length > 0);
+  const [showQ, setShowQ] = useState(hasQ);
 
   const label = {
     fontFamily: fonts.body, fontSize: `${ui.qLabel}px`,
@@ -524,52 +506,39 @@ export function TaskDetailPanel({ task, t, fonts, ui, onPatch, onAddSubtask, onP
     background: "none", border: "none", cursor: "pointer",
     padding: "2px", display: "flex", alignItems: "center",
   };
+  const pill = (active) => ({
+    fontFamily: fonts.body, fontSize: `${ui.qLabel}px`,
+    padding: "3px 10px", borderRadius: CONTROL.pill, cursor: "pointer",
+    border: `1px solid ${active ? t.question : t.border}`,
+    background: active ? t.surface : "transparent",
+    color: active ? t.question : t.textMuted,
+    display: "flex", alignItems: "center", gap: "5px", flexShrink: 0,
+  });
+  const section = {
+    borderTop: `1px solid ${t.divider}`,
+    paddingTop: "8px", marginTop: "2px",
+    display: "flex", flexDirection: "column", gap: "7px",
+  };
 
   const commitSub = () => {
     const v = subDraft.trim();
     if (!v) return;
     onAddSubtask(task.id, v);
+    if (!showActions) setShowActions(true);
     setSubDraft("");
   };
 
   const subCheck = Math.max(12, Math.round(ui.checkbox * 0.75));
+  const pct = subs.length ? Math.round((subsDone / subs.length) * 100) : 0;
 
   return (
     <div style={{
       padding: "9px 12px 11px", borderRadius: "0 0 6px 6px",
       background: t.accentSoft,
       border: `1px solid ${t.border}`, borderTop: "none",
-      display: "flex", flexDirection: "column", gap: "7px",
+      display: "flex", flexDirection: "column", gap: "8px",
     }}>
-      {/* meeting toggle + attendees */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <button
-          onClick={() => onPatch(task.id, isMeeting
-            ? { kind: undefined }
-            : { kind: "meeting", meeting: task.meeting || { attendees: "" } })}
-          title={isMeeting ? "Back to a plain task" : "Make this a meeting"}
-          style={{
-            fontFamily: fonts.body, fontSize: `${ui.qLabel}px`,
-            padding: "3px 10px", borderRadius: CONTROL.pill, cursor: "pointer",
-            border: `1px solid ${isMeeting ? t.question : t.border}`,
-            background: isMeeting ? t.accentSoft : "transparent",
-            color: isMeeting ? t.question : t.textFaint,
-            display: "flex", alignItems: "center", gap: "5px", flexShrink: 0,
-          }}>
-          <IconPeople size={ui.qLabel} />
-          meeting
-        </button>
-        {isMeeting && (
-          <input
-            value={task.meeting?.attendees || ""}
-            onChange={(e) => onPatch(task.id, { meeting: { ...task.meeting, attendees: e.target.value } })}
-            placeholder="who's present…"
-            style={field}
-          />
-        )}
-      </div>
-
-      {/* note / minutes */}
+      {/* note / minutes — the panel's core, always visible */}
       <div style={{ display: "flex", gap: "8px" }}>
         <label style={{ ...label, paddingTop: "4px" }}>{isMeeting ? "minutes" : "note"}</label>
         <textarea
@@ -581,99 +550,149 @@ export function TaskDetailPanel({ task, t, fonts, ui, onPatch, onAddSubtask, onP
         />
       </div>
 
-      {/* sub-checklist / action items */}
-      <div>
-        <div style={{
-          fontFamily: fonts.body, fontSize: `${ui.qLabel}px`, color: t.question,
-          marginBottom: subs.length ? "5px" : "2px",
-        }}>
-          {isMeeting ? "action items" : "sub-checklist"}
+      {/* section triggers */}
+      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+        <button onClick={() => onSetMeeting(task.id, !isMeeting)}
+          title={isMeeting ? "Back to a plain task (removes the meeting tag)" : "Make this a meeting (applies the meeting tag)"}
+          style={pill(isMeeting)}>
+          <IconPeople size={ui.qLabel} />
+          meeting
+        </button>
+        <button onClick={() => setShowActions((o) => !o)}
+          title="Action items"
+          style={pill(showActions)}>
+          <IconCheck size={ui.qLabel} />
+          action items
           {subs.length > 0 && (
-            <span style={{ color: t.textMuted, marginLeft: "7px" }}>
-              {subsDone}/{subs.length}
-            </span>
+            <span style={{ color: t.textMuted }}>{subsDone}/{subs.length}</span>
           )}
+        </button>
+        <button onClick={() => setShowQ((o) => !o)}
+          title="Who to ask, what to ask"
+          style={pill(showQ)}>
+          <IconQuestion size={ui.qLabel} />
+          questions
+          {hasQ && !showQ && (
+            <span style={{
+              width: "5px", height: "5px", borderRadius: "50%",
+              background: t.question, display: "inline-block",
+            }} />
+          )}
+        </button>
+      </div>
+
+      {/* meeting: attendees */}
+      {isMeeting && (
+        <div style={{ ...section, flexDirection: "row", alignItems: "center", gap: "8px" }}>
+          <label style={label}>with</label>
+          <input
+            value={task.meeting?.attendees || ""}
+            onChange={(e) => onPatch(task.id, { meeting: { ...task.meeting, attendees: e.target.value } })}
+            placeholder="who's present…"
+            style={field}
+          />
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          {subs.map((s) => (
-            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-              <button onClick={() => onPatchSubtask(task.id, s.id, { done: !s.done })}
-                title={s.done ? "Uncheck" : "Mark done"}
-                style={{
-                  width: `${subCheck}px`, height: `${subCheck}px`,
-                  borderRadius: "3px", cursor: "pointer", flexShrink: 0, padding: 0,
-                  border: s.done ? "none" : `1.5px solid ${t.textFaint}`,
-                  background: s.done ? t.accent : "transparent",
-                  color: t.accentText, display: "flex",
-                  alignItems: "center", justifyContent: "center",
-                }}>
-                {s.done && <IconCheck size={subCheck - 4} />}
-              </button>
+      )}
+
+      {/* action items */}
+      {showActions && (
+        <div style={section}>
+          {subs.length > 0 && (
+            <div title={`${subsDone} of ${subs.length} done`} style={{
+              height: "4px", borderRadius: "2px", background: t.border,
+              overflow: "hidden",
+            }}>
+              <div style={{
+                height: "100%", width: `${pct}%`, background: t.accent,
+                borderRadius: "2px", transition: "width 0.2s ease",
+              }} />
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            {subs.map((s) => (
+              <div key={s.id} style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+                <button onClick={() => onPatchSubtask(task.id, s.id, { done: !s.done })}
+                  title={s.done ? "Uncheck" : "Mark done"}
+                  style={{
+                    width: `${subCheck}px`, height: `${subCheck}px`,
+                    borderRadius: "3px", cursor: "pointer", flexShrink: 0, padding: 0,
+                    border: s.done ? "none" : `1.5px solid ${t.textFaint}`,
+                    background: s.done ? t.accent : "transparent",
+                    color: t.accentText, display: "flex",
+                    alignItems: "center", justifyContent: "center",
+                  }}>
+                  {s.done && <IconCheck size={subCheck - 4} />}
+                </button>
+                <input
+                  value={s.text}
+                  onChange={(e) => onPatchSubtask(task.id, s.id, { text: e.target.value })}
+                  style={{
+                    flex: 1, background: "transparent", border: "none", outline: "none",
+                    fontFamily: fonts.body, fontSize: `${ui.qInput}px`,
+                    color: s.done ? t.textMuted : t.text,
+                    textDecoration: s.done ? "line-through" : "none",
+                    textDecorationColor: t.textFaint, padding: "2px 0",
+                  }}
+                />
+                <button onClick={() => onPromoteSubtask(task.id, s.id)}
+                  title="Promote to its own task (this week)"
+                  style={{ ...ghostBtn, color: t.textFaint }}>
+                  <IconArrowUp size={ui.qLabel} />
+                </button>
+                <button onClick={() => onRemoveSubtask(task.id, s.id)} title="Remove"
+                  style={{ ...ghostBtn, color: t.textFaint, fontFamily: fonts.body,
+                    fontSize: `${ui.qLabel}px` }}>
+                  ✕
+                </button>
+              </div>
+            ))}
+            {/* add row */}
+            <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+              <span style={{
+                width: `${subCheck}px`, height: `${subCheck}px`, flexShrink: 0,
+                borderRadius: "3px", border: `1.5px dashed ${t.border}`,
+              }} />
               <input
-                value={s.text}
-                onChange={(e) => onPatchSubtask(task.id, s.id, { text: e.target.value })}
+                value={subDraft}
+                onChange={(e) => setSubDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") commitSub(); }}
+                onBlur={commitSub}
+                placeholder="add an action item…"
                 style={{
                   flex: 1, background: "transparent", border: "none", outline: "none",
                   fontFamily: fonts.body, fontSize: `${ui.qInput}px`,
-                  color: s.done ? t.textMuted : t.text,
-                  textDecoration: s.done ? "line-through" : "none",
-                  textDecorationColor: t.textFaint, padding: "2px 0",
+                  color: t.text, padding: "2px 0",
                 }}
               />
-              <button onClick={() => onPromoteSubtask(task.id, s.id)}
-                title="Promote to its own task (this week)"
-                style={{ ...ghostBtn, color: t.textFaint }}>
-                <IconArrowUp size={ui.qLabel} />
-              </button>
-              <button onClick={() => onRemoveSubtask(task.id, s.id)} title="Remove"
-                style={{ ...ghostBtn, color: t.textFaint, fontFamily: fonts.body,
-                  fontSize: `${ui.qLabel}px` }}>
-                ✕
-              </button>
             </div>
-          ))}
-          {/* add row */}
-          <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-            <span style={{
-              width: `${subCheck}px`, height: `${subCheck}px`, flexShrink: 0,
-              borderRadius: "3px", border: `1.5px dashed ${t.border}`,
-            }} />
+          </div>
+        </div>
+      )}
+
+      {/* questions: who / ask */}
+      {showQ && (
+        <div style={section}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <label style={label}>who</label>
             <input
-              value={subDraft}
-              onChange={(e) => setSubDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") commitSub(); }}
-              onBlur={commitSub}
-              placeholder={isMeeting ? "add an action item…" : "add a step…"}
-              style={{
-                flex: 1, background: "transparent", border: "none", outline: "none",
-                fontFamily: fonts.body, fontSize: `${ui.qInput}px`,
-                color: t.text, padding: "2px 0",
-              }}
+              value={task.questionWho || ""}
+              onChange={(e) => onPatch(task.id, { questionWho: e.target.value })}
+              placeholder="person or team…"
+              style={field}
+            />
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <label style={{ ...label, paddingTop: "4px" }}>ask</label>
+            <textarea
+              value={task.questionText || ""}
+              onChange={(e) => onPatch(task.id, { questionText: e.target.value })}
+              placeholder="what do you need to find out…"
+              rows={2}
+              style={{ ...field, resize: "vertical", lineHeight: 1.5, boxSizing: "border-box" }}
             />
           </div>
         </div>
-      </div>
-
-      {/* who / ask — the original question fields */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <label style={label}>who</label>
-        <input
-          value={task.questionWho || ""}
-          onChange={(e) => onPatch(task.id, { questionWho: e.target.value })}
-          placeholder="person or team…"
-          style={field}
-        />
-      </div>
-      <div style={{ display: "flex", gap: "8px" }}>
-        <label style={{ ...label, paddingTop: "4px" }}>ask</label>
-        <textarea
-          value={task.questionText || ""}
-          onChange={(e) => onPatch(task.id, { questionText: e.target.value })}
-          placeholder="what do you need to find out…"
-          rows={2}
-          style={{ ...field, resize: "vertical", lineHeight: 1.5, boxSizing: "border-box" }}
-        />
-      </div>
+      )}
     </div>
   );
 }

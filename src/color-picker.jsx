@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { NEUTRALS, shades, bgShades } from "./theme.js";
 import { TYPE, SP, CONTROL } from "./tokens.js";
 
@@ -17,8 +17,10 @@ export default function ColorPicker({
   tags, onCreateTag, align = "right", renderTrigger,
 }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
   const [draft, setDraft] = useState("");
   const [hexDraft, setHexDraft] = useState("");
+  const hostRef = useRef(null);
   const none = `linear-gradient(45deg, transparent 47%, ${t.textFaint} 47%, ${t.textFaint} 53%, transparent 53%)`;
   const columnShades = (c) => (variant === "bg" ? bgShades(c, t.dark) : shades(c));
   const namedTags = tags?.filter((tg) => tg.name && tg.name.trim()) || [];
@@ -29,7 +31,25 @@ export default function ColorPicker({
   // the hex field is for *entering* a custom colour — it starts empty rather
   // than echoing the current selection, so a palette pick is never re-submitted
   // as a literal hex (which wouldn't shift with the palette).
-  const toggle = () => setOpen(!open);
+  // The popover is fixed-positioned from the trigger's rect and clamped to the
+  // viewport, so it can't run off-screen on small displays or near edges.
+  const PANEL_W = 248;
+  const PANEL_H = 320;
+  const toggle = () => {
+    if (!open && hostRef.current) {
+      const r = hostRef.current.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const w = Math.min(PANEL_W, vw - 16);
+      let left = align === "left" ? r.left : r.right - w;
+      left = Math.max(8, Math.min(left, vw - w - 8));
+      let top = r.bottom + 6;
+      if (top + PANEL_H > vh && r.top - PANEL_H - 6 > 8) top = r.top - PANEL_H - 6;
+      top = Math.max(8, top);
+      setPos({ left, top, maxWidth: w });
+    }
+    setOpen(!open);
+  };
 
   const submitHex = () => {
     const raw = hexDraft.trim();
@@ -74,25 +94,26 @@ export default function ColorPicker({
     />
   );
 
-  const popoverPos = align === "left" ? { left: 0 } : { right: 0 };
-
   return (
-    <span style={{ position: "relative", display: "inline-block", lineHeight: 0 }}>
+    <span ref={hostRef} style={{ position: "relative", display: "inline-block", lineHeight: 0 }}>
       {renderTrigger ? renderTrigger(toggle, open) : defaultTrigger}
       {open && (
         <>
           <div
             onClick={close}
+            data-bj-keep-open=""
             style={{ position: "fixed", inset: 0, zIndex: 40 }}
           />
           <div style={{
-            position: "absolute", top: 26, ...popoverPos, zIndex: 41,
+            position: "fixed", top: pos?.top ?? 26, left: pos?.left ?? 8,
+            maxWidth: pos?.maxWidth, maxHeight: "min(76vh, 360px)",
+            overflowY: "auto", zIndex: 41,
             background: t.popover, border: `1px solid ${t.border}`,
             borderRadius: CONTROL.radius, padding: SP.sm,
             boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
             fontFamily: "inherit",
           }}>
-            <div style={{ display: "flex", gap: 4, marginBottom: 6, alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 4, marginBottom: 6, alignItems: "center", flexWrap: "wrap" }}>
               {allowNone && <Cell color={null} />}
               {NEUTRALS.map((c) => <Cell key={c} color={c} />)}
               <input
@@ -144,7 +165,7 @@ export default function ColorPicker({
                 </div>
               </div>
             )}
-            <div style={{ display: "flex", gap: 4 }}>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
               {(colors || []).map((c) => (
                 <div key={c} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {columnShades(c).map((s) => <Cell key={s} color={s} />)}
