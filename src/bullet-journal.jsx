@@ -186,6 +186,16 @@ function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intensity, co
           }}
         />
 
+        {/* rollover age — gentle visibility for tasks that keep moving on */}
+        {(task.rolled || 0) >= 2 && (
+          <span title={`rolled over ${task.rolled} weeks`}
+            style={{
+              fontFamily: fonts.body, fontSize: `${Math.max(10, ui.date - 2)}px`,
+              color: task.rolled >= 4 ? t.textMuted : t.textFaint,
+              flexShrink: 0, whiteSpace: "nowrap",
+            }}>↻{task.rolled}w</span>
+        )}
+
         {/* date */}
         <span style={{
           fontFamily: fonts.body, fontSize: `${ui.date}px`,

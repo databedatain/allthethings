@@ -227,7 +227,12 @@ export function rollIncompletes(data) {
     if (t.status !== "done" && t.week < cur) {
       changed = true;
       counts[t.week] = (counts[t.week] || 0) + 1;
-      return { ...t, week: cur };
+      // per-task age: add the weeks actually skipped, not just one per roll
+      // event, so a task untouched across a long absence ages correctly
+      const weeksBack = Math.round(
+        (new Date(`${cur}T00:00:00`) - new Date(`${t.week}T00:00:00`)) / (7 * 864e5)
+      );
+      return { ...t, week: cur, rolled: (t.rolled || 0) + weeksBack };
     }
     return t;
   });
