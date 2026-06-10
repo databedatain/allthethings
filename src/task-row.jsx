@@ -89,9 +89,7 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
             border: `1.5px solid ${t.textFaint}`, background: "transparent",
             display: "flex", alignItems: "center", justifyContent: "center",
             color: t.accent, flexShrink: 0, padding: 0,
-          }}>
-          <span style={{ opacity: 0.32 }}><IconCheck size={ui.innerCheck} /></span>
-        </button>
+          }} />
 
         {/* meeting marker */}
         {isMeeting && (
@@ -137,42 +135,19 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
           tags={resolvedTags} onCreateTag={onCreateTag}
           onChange={(c) => onSetColor(task.id, c)}
           renderTrigger={(toggle) => {
-            const pillFont = `${Math.max(10, ui.taskFont - 5)}px`;
-            const padding = "1px 8px";
-            const radius = CONTROL.pill;
-            if (tagOnTask) {
-              const tagHex = resolveColor(tagOnTask.color, colors);
-              return (
-                <button onClick={toggle} title={`Tag: ${tagOnTask.name}`}
-                  style={{
-                    fontFamily: fonts.body, fontSize: pillFont, padding, borderRadius: radius,
-                    background: rgba(tagHex, t.dark ? 0.28 : 0.18),
-                    color: t.text,
-                    border: `1px solid ${rgba(tagHex, 0.55)}`,
-                    cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
-                  }}>{tagOnTask.name}</button>
-              );
-            }
-            if (task.color) {
-              return (
-                <button onClick={toggle} title="Tag colour (click to rename)"
-                  style={{
-                    fontFamily: fonts.body, fontSize: pillFont, padding, borderRadius: radius,
-                    background: rgba(taskColor, t.dark ? 0.28 : 0.18),
-                    color: t.textMuted,
-                    border: `1px solid ${rgba(taskColor, 0.55)}`,
-                    cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
-                  }}>—</button>
-              );
-            }
+            const dot = Math.max(10, Math.round(ui.taskFont * 0.55));
             return (
-              <button onClick={toggle} title="Add tag"
+              <button onClick={toggle}
+                title={tagOnTask ? `Tag: ${tagOnTask.name}` : task.color ? "Tag colour" : "Add tag"}
+                className={task.color ? undefined : "bj-row-action"}
                 style={{
-                  fontFamily: fonts.body, fontSize: pillFont, padding, borderRadius: radius,
-                  background: "transparent", color: t.textFaint,
-                  border: `1px dashed ${t.border}`,
-                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
-                }}>tag</button>
+                  width: dot, height: dot, borderRadius: "50%", padding: 0,
+                  cursor: "pointer", flexShrink: 0,
+                  background: task.color ? taskColor : "transparent",
+                  border: task.color
+                    ? `1px solid ${rgba(taskColor, 0.7)}`
+                    : `1.5px dashed ${t.textFaint}`,
+                }} />
             );
           }}
         />
@@ -198,11 +173,19 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
             }}>↻{task.rolled}w</span>
         )}
 
-        {/* date */}
-        <span style={{
+        {/* date — present on hover, out of the way otherwise */}
+        <span className="bj-row-action" style={{
           fontFamily: fonts.body, fontSize: `${ui.date}px`,
           color: t.textMuted, flexShrink: 0, whiteSpace: "nowrap", marginRight: "4px",
         }}>{formatDate(task.created)}</span>
+
+        {/* detail toggle — visible when the task carries notes/subtasks/meeting */}
+        <button onClick={() => onToggleDetail(task.id)}
+          title={isExpanded ? "Collapse details" : "Notes, action items, meeting"}
+          className={hasDetail ? undefined : "bj-row-action"}
+          style={{ ...iconBtn, color: hasDetail ? t.question : t.textFaint }}>
+          <IconNote size={ui.icon} />
+        </button>
 
         {/* today's focus — a set target stays visible like a set star */}
         {onToggleFocus && (
@@ -219,14 +202,6 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
           className={isStar ? undefined : "bj-row-action"}
           style={{ ...iconBtn, color: isStar ? t.star : t.textFaint }}>
           <IconStar filled={isStar} size={ui.star} />
-        </button>
-
-        {/* detail toggle — visible when the task carries notes/subtasks/meeting */}
-        <button onClick={() => onToggleDetail(task.id)}
-          title={isExpanded ? "Collapse details" : "Notes, sub-checklist, meeting"}
-          className={hasDetail ? undefined : "bj-row-action"}
-          style={{ ...iconBtn, color: hasDetail ? t.question : t.textFaint }}>
-          <IconNote size={ui.icon} />
         </button>
 
         {/* hold toggle — visible while on hold (resume affordance) */}
@@ -361,9 +336,6 @@ export function AddTaskRow({ t, fonts, colors, tags, ui, intensity, draft, onCha
     background: "none", border: "none", cursor: "pointer",
     padding: `${ui.btnPad}px`, display: "flex", alignItems: "center",
   };
-  const pillFont = `${Math.max(10, ui.taskFont - 5)}px`;
-  const pillPad = "1px 8px";
-  const pillRadius = CONTROL.pill;
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -414,53 +386,34 @@ export function AddTaskRow({ t, fonts, colors, tags, ui, intensity, draft, onCha
           tags={resolvedTags} onCreateTag={onCreateTag}
           onChange={(c) => onChange({ color: colorToken(c, colors) })}
           renderTrigger={(toggle) => {
-            if (tagOnDraft) {
-              const tagHex = resolveColor(tagOnDraft.color, colors);
-              return (
-              <button onClick={toggle} title={`Tag: ${tagOnDraft.name}`}
-                style={{
-                  fontFamily: fonts.body, fontSize: pillFont, padding: pillPad, borderRadius: pillRadius,
-                  background: rgba(tagHex, t.dark ? 0.28 : 0.18),
-                  color: t.text,
-                  border: `1px solid ${rgba(tagHex, 0.55)}`,
-                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
-                }}>{tagOnDraft.name}</button>
-            );
-            }
-            if (draft.color) return (
-              <button onClick={toggle} title="Tag colour (click to rename)"
-                style={{
-                  fontFamily: fonts.body, fontSize: pillFont, padding: pillPad, borderRadius: pillRadius,
-                  background: rgba(draftColor, t.dark ? 0.28 : 0.18),
-                  color: t.textMuted,
-                  border: `1px solid ${rgba(draftColor, 0.55)}`,
-                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
-                }}>—</button>
-            );
+            const dot = Math.max(10, Math.round(ui.taskFont * 0.55));
             return (
-              <button onClick={toggle} title="Add tag"
+              <button onClick={toggle}
+                title={tagOnDraft ? `Tag: ${tagOnDraft.name}` : draft.color ? "Tag colour" : "Add tag"}
                 style={{
-                  fontFamily: fonts.body, fontSize: pillFont, padding: pillPad, borderRadius: pillRadius,
-                  background: "transparent", color: t.textFaint,
-                  border: `1px dashed ${t.border}`,
-                  cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
-                }}>tag</button>
+                  width: dot, height: dot, borderRadius: "50%", padding: 0,
+                  cursor: "pointer", flexShrink: 0,
+                  background: draft.color ? draftColor : "transparent",
+                  border: draft.color
+                    ? `1px solid ${rgba(draftColor, 0.7)}`
+                    : `1.5px dashed ${t.textFaint}`,
+                }} />
             );
           }}
         />
-
-        {/* star */}
-        <button onClick={() => onChange({ starred: !isStar })}
-          title={isStar ? "Unstar" : "Star"}
-          style={{ ...iconBtn, color: isStar ? t.star : t.textFaint }}>
-          <IconStar filled={isStar} size={ui.star} />
-        </button>
 
         {/* question */}
         <button onClick={() => onChange({ showQ: !draft.showQ })}
           title={draft.showQ ? "Hide question" : "Add question"}
           style={{ ...iconBtn, color: hasQ ? t.question : t.textFaint }}>
           <IconQuestion size={ui.icon} />
+        </button>
+
+        {/* star */}
+        <button onClick={() => onChange({ starred: !isStar })}
+          title={isStar ? "Unstar" : "Star"}
+          style={{ ...iconBtn, color: isStar ? t.star : t.textFaint }}>
+          <IconStar filled={isStar} size={ui.star} />
         </button>
 
         {/* hold */}
