@@ -85,3 +85,22 @@ export const IconX = ({ size = 16 }) => (
     <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
   </svg>
 );
+export const IconNote = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
+    <rect x="2" y="1.5" width="10" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+    <path d="M4.5 4.5h5M4.5 7h5M4.5 9.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+  </svg>
+);
+export const IconPeople = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="5.5" cy="5" r="2.2" stroke="currentColor" strokeWidth="1.3"/>
+    <path d="M1.8 13c.5-2.4 1.9-3.6 3.7-3.6S8.7 10.6 9.2 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    <circle cx="11" cy="5.6" r="1.8" stroke="currentColor" strokeWidth="1.2"/>
+    <path d="M10.8 9.5c1.9 0 3 1.1 3.4 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+  </svg>
+);
+export const IconArrowUp = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
+    <path d="M7 11.5V2.5M3.5 6L7 2.5L10.5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);

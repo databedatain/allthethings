@@ -1,6 +1,6 @@
 import { useState } from "react";
 import ColorPicker from "./color-picker.jsx";
-import { IconCheck, IconPause, IconPlus, IconTrash, IconUndo, IconQuestion, IconStar, IconGrip } from "./icons.jsx";
+import { IconCheck, IconPause, IconPlus, IconTrash, IconUndo, IconQuestion, IconStar, IconGrip, IconNote, IconPeople, IconArrowUp } from "./icons.jsx";
 import { rgba, rowFill, getIntensity, resolveColor, colorToken } from "./theme.js";
 import { TYPE, CONTROL } from "./tokens.js";
 
@@ -11,12 +11,16 @@ const formatDate = (ts) => {
 };
 
 /* ─── task row ─── */
-export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intensity, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onUpdateQuestion, isQExpanded, onToggleQ }) {
+export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intensity, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask, isExpanded, onToggleDetail }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.text);
   const isHold = task.status === "hold";
   const isStar = !!task.starred;
-  const hasQ = task.questionWho || task.questionText;
+  const isMeeting = task.kind === "meeting";
+  const subs = task.subtasks || [];
+  const subsDone = subs.filter((s) => s.done).length;
+  const hasDetail = !!(task.questionWho || task.questionText || task.note ||
+    subs.length || isMeeting);
   const tagOnTask = tags?.find((tg) => tg.color === task.color && tg.name?.trim());
   // tokens resolve to a concrete hex against the active palette for display.
   // resolvedTags feeds the (hex-based) ColorPicker its tag shortcuts.
@@ -57,12 +61,13 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
         style={{
           display: "flex", alignItems: "center", gap: "4px",
           padding: `${ui.padY}px ${ui.padX}px`,
-          borderRadius: isQExpanded ? "6px 6px 0 0" : "6px",
+          borderRadius: isExpanded ? "6px 6px 0 0" : "6px",
           background: tint, border,
           boxShadow: starOutline,
-          borderBottom: isQExpanded ? "none" : undefined,
+          borderBottom: isExpanded ? "none" : undefined,
           borderTop: isOver ? `2px solid ${t.accent}` : undefined,
           transition: "background 0.15s ease",
+          position: "relative",
         }}>
         {/* drag handle */}
         {drag.enabled && (
@@ -82,6 +87,13 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
           }}>
           <span style={{ opacity: 0.32 }}><IconCheck size={ui.innerCheck} /></span>
         </button>
+
+        {/* meeting marker */}
+        {isMeeting && (
+          <span title="Meeting" style={{ color: t.question, display: "flex", flexShrink: 0, marginLeft: "2px" }}>
+            <IconPeople size={ui.icon} />
+          </span>
+        )}
 
         {/* text (click to edit) */}
         {editing ? (
@@ -160,6 +172,17 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
           }}
         />
 
+        {/* sub-checklist progress */}
+        {subs.length > 0 && (
+          <span title={`${subsDone} of ${subs.length} done`}
+            style={{
+              fontFamily: fonts.body, fontSize: `${Math.max(10, ui.date - 2)}px`,
+              color: t.textMuted, border: `1px solid ${t.border}`,
+              borderRadius: CONTROL.pill, padding: "0 7px",
+              flexShrink: 0, whiteSpace: "nowrap",
+            }}>{subsDone}/{subs.length}</span>
+        )}
+
         {/* rollover age — gentle visibility for tasks that keep moving on */}
         {(task.rolled || 0) >= 2 && (
           <span title={`rolled over ${task.rolled} weeks`}
@@ -183,12 +206,12 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
           <IconStar filled={isStar} size={ui.star} />
         </button>
 
-        {/* question toggle — visible when a question exists */}
-        <button onClick={() => onToggleQ(task.id)}
-          title={isQExpanded ? "Collapse question" : "Add/view question"}
-          className={hasQ ? undefined : "bj-row-action"}
-          style={{ ...iconBtn, color: hasQ ? t.question : t.textFaint }}>
-          <IconQuestion size={ui.icon} />
+        {/* detail toggle — visible when the task carries notes/subtasks/meeting */}
+        <button onClick={() => onToggleDetail(task.id)}
+          title={isExpanded ? "Collapse details" : "Notes, sub-checklist, meeting"}
+          className={hasDetail ? undefined : "bj-row-action"}
+          style={{ ...iconBtn, color: hasDetail ? t.question : t.textFaint }}>
+          <IconNote size={ui.icon} />
         </button>
 
         {/* hold toggle — visible while on hold (resume affordance) */}
@@ -212,53 +235,24 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
           }}>
           {confirmKey === `del:${task.id}` ? "sure?" : <IconTrash size={ui.icon} />}
         </button>
+
+        {/* progress along the bottom edge */}
+        {subs.length > 0 && (
+          <span style={{
+            position: "absolute", left: 0, bottom: 0, height: "2px",
+            width: `${Math.round((subsDone / subs.length) * 100)}%`,
+            background: t.accent, borderRadius: "0 0 0 6px",
+            transition: "width 0.2s ease", pointerEvents: "none",
+          }} />
+        )}
       </div>
 
-      {/* collapsible question panel */}
-      {isQExpanded && (
-        <div style={{
-          padding: "9px 12px 11px", borderRadius: "0 0 6px 6px",
-          background: t.accentSoft,
-          border: `1px solid ${t.border}`, borderTop: "none",
-          display: "flex", flexDirection: "column", gap: "7px",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <label style={{
-              fontFamily: fonts.body, fontSize: `${ui.qLabel}px`,
-              color: t.question, flexShrink: 0, width: "40px",
-            }}>who</label>
-            <input
-              value={task.questionWho || ""}
-              onChange={(e) => onUpdateQuestion(task.id, "questionWho", e.target.value)}
-              placeholder="person or team…"
-              style={{
-                flex: 1, padding: "6px 9px", borderRadius: "4px",
-                border: `1px solid ${t.border}`, background: t.surface,
-                fontFamily: fonts.body, fontSize: `${ui.qInput}px`,
-                outline: "none", color: t.text,
-              }}
-            />
-          </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <label style={{
-              fontFamily: fonts.body, fontSize: `${ui.qLabel}px`,
-              color: t.question, flexShrink: 0, width: "40px", paddingTop: "4px",
-            }}>ask</label>
-            <textarea
-              value={task.questionText || ""}
-              onChange={(e) => onUpdateQuestion(task.id, "questionText", e.target.value)}
-              placeholder="what do you need to find out…"
-              rows={2}
-              style={{
-                flex: 1, padding: "6px 9px", borderRadius: "4px",
-                border: `1px solid ${t.border}`, background: t.surface,
-                fontFamily: fonts.body, fontSize: `${ui.qInput}px`,
-                outline: "none", color: t.text, resize: "vertical",
-                lineHeight: 1.5, boxSizing: "border-box",
-              }}
-            />
-          </div>
-        </div>
+      {/* collapsible detail panel */}
+      {isExpanded && (
+        <TaskDetailPanel task={task} t={t} fonts={fonts} ui={ui}
+          onPatch={onPatch} onAddSubtask={onAddSubtask}
+          onPatchSubtask={onPatchSubtask} onRemoveSubtask={onRemoveSubtask}
+          onPromoteSubtask={onPromoteSubtask} />
       )}
     </div>
   );
@@ -493,3 +487,180 @@ export function AddTaskRow({ t, fonts, colors, tags, ui, intensity, draft, onCha
   );
 }
 
+
+/* ─── per-task detail panel: note, sub-checklist, who/ask, meeting ───
+ * A meeting is the same task wearing a different hat: attendees join the
+ * note, and the sub-checklist relabels to action items. */
+export function TaskDetailPanel({ task, t, fonts, ui, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask }) {
+  const [subDraft, setSubDraft] = useState("");
+  const isMeeting = task.kind === "meeting";
+  const subs = task.subtasks || [];
+  const subsDone = subs.filter((s) => s.done).length;
+
+  const label = {
+    fontFamily: fonts.body, fontSize: `${ui.qLabel}px`,
+    color: t.question, flexShrink: 0, width: "40px",
+  };
+  const field = {
+    flex: 1, padding: "6px 9px", borderRadius: "4px",
+    border: `1px solid ${t.border}`, background: t.surface,
+    fontFamily: fonts.body, fontSize: `${ui.qInput}px`,
+    outline: "none", color: t.text,
+  };
+  const ghostBtn = {
+    background: "none", border: "none", cursor: "pointer",
+    padding: "2px", display: "flex", alignItems: "center",
+  };
+
+  const commitSub = () => {
+    const v = subDraft.trim();
+    if (!v) return;
+    onAddSubtask(task.id, v);
+    setSubDraft("");
+  };
+
+  const subCheck = Math.max(12, Math.round(ui.checkbox * 0.75));
+
+  return (
+    <div style={{
+      padding: "9px 12px 11px", borderRadius: "0 0 6px 6px",
+      background: t.accentSoft,
+      border: `1px solid ${t.border}`, borderTop: "none",
+      display: "flex", flexDirection: "column", gap: "7px",
+    }}>
+      {/* meeting toggle + attendees */}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <button
+          onClick={() => onPatch(task.id, isMeeting
+            ? { kind: undefined }
+            : { kind: "meeting", meeting: task.meeting || { attendees: "" } })}
+          title={isMeeting ? "Back to a plain task" : "Make this a meeting"}
+          style={{
+            fontFamily: fonts.body, fontSize: `${ui.qLabel}px`,
+            padding: "3px 10px", borderRadius: CONTROL.pill, cursor: "pointer",
+            border: `1px solid ${isMeeting ? t.question : t.border}`,
+            background: isMeeting ? t.accentSoft : "transparent",
+            color: isMeeting ? t.question : t.textFaint,
+            display: "flex", alignItems: "center", gap: "5px", flexShrink: 0,
+          }}>
+          <IconPeople size={ui.qLabel} />
+          meeting
+        </button>
+        {isMeeting && (
+          <input
+            value={task.meeting?.attendees || ""}
+            onChange={(e) => onPatch(task.id, { meeting: { ...task.meeting, attendees: e.target.value } })}
+            placeholder="who's present…"
+            style={field}
+          />
+        )}
+      </div>
+
+      {/* note / minutes */}
+      <div style={{ display: "flex", gap: "8px" }}>
+        <label style={{ ...label, paddingTop: "4px" }}>{isMeeting ? "minutes" : "note"}</label>
+        <textarea
+          value={task.note || ""}
+          onChange={(e) => onPatch(task.id, { note: e.target.value })}
+          placeholder={isMeeting ? "what was discussed…" : "anything worth keeping…"}
+          rows={2}
+          style={{ ...field, resize: "vertical", lineHeight: 1.5, boxSizing: "border-box" }}
+        />
+      </div>
+
+      {/* sub-checklist / action items */}
+      <div>
+        <div style={{
+          fontFamily: fonts.body, fontSize: `${ui.qLabel}px`, color: t.question,
+          marginBottom: subs.length ? "5px" : "2px",
+        }}>
+          {isMeeting ? "action items" : "sub-checklist"}
+          {subs.length > 0 && (
+            <span style={{ color: t.textMuted, marginLeft: "7px" }}>
+              {subsDone}/{subs.length}
+            </span>
+          )}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          {subs.map((s) => (
+            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+              <button onClick={() => onPatchSubtask(task.id, s.id, { done: !s.done })}
+                title={s.done ? "Uncheck" : "Mark done"}
+                style={{
+                  width: `${subCheck}px`, height: `${subCheck}px`,
+                  borderRadius: "3px", cursor: "pointer", flexShrink: 0, padding: 0,
+                  border: s.done ? "none" : `1.5px solid ${t.textFaint}`,
+                  background: s.done ? t.accent : "transparent",
+                  color: t.accentText, display: "flex",
+                  alignItems: "center", justifyContent: "center",
+                }}>
+                {s.done && <IconCheck size={subCheck - 4} />}
+              </button>
+              <input
+                value={s.text}
+                onChange={(e) => onPatchSubtask(task.id, s.id, { text: e.target.value })}
+                style={{
+                  flex: 1, background: "transparent", border: "none", outline: "none",
+                  fontFamily: fonts.body, fontSize: `${ui.qInput}px`,
+                  color: s.done ? t.textMuted : t.text,
+                  textDecoration: s.done ? "line-through" : "none",
+                  textDecorationColor: t.textFaint, padding: "2px 0",
+                }}
+              />
+              <button onClick={() => onPromoteSubtask(task.id, s.id)}
+                title="Promote to its own task (this week)"
+                style={{ ...ghostBtn, color: t.textFaint }}>
+                <IconArrowUp size={ui.qLabel} />
+              </button>
+              <button onClick={() => onRemoveSubtask(task.id, s.id)} title="Remove"
+                style={{ ...ghostBtn, color: t.textFaint, fontFamily: fonts.body,
+                  fontSize: `${ui.qLabel}px` }}>
+                ✕
+              </button>
+            </div>
+          ))}
+          {/* add row */}
+          <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+            <span style={{
+              width: `${subCheck}px`, height: `${subCheck}px`, flexShrink: 0,
+              borderRadius: "3px", border: `1.5px dashed ${t.border}`,
+            }} />
+            <input
+              value={subDraft}
+              onChange={(e) => setSubDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") commitSub(); }}
+              onBlur={commitSub}
+              placeholder={isMeeting ? "add an action item…" : "add a step…"}
+              style={{
+                flex: 1, background: "transparent", border: "none", outline: "none",
+                fontFamily: fonts.body, fontSize: `${ui.qInput}px`,
+                color: t.text, padding: "2px 0",
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* who / ask — the original question fields */}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <label style={label}>who</label>
+        <input
+          value={task.questionWho || ""}
+          onChange={(e) => onPatch(task.id, { questionWho: e.target.value })}
+          placeholder="person or team…"
+          style={field}
+        />
+      </div>
+      <div style={{ display: "flex", gap: "8px" }}>
+        <label style={{ ...label, paddingTop: "4px" }}>ask</label>
+        <textarea
+          value={task.questionText || ""}
+          onChange={(e) => onPatch(task.id, { questionText: e.target.value })}
+          placeholder="what do you need to find out…"
+          rows={2}
+          style={{ ...field, resize: "vertical", lineHeight: 1.5, boxSizing: "border-box" }}
+        />
+      </div>
+    </div>
+  );
+}

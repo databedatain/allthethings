@@ -56,7 +56,7 @@ export function getDensity(id) {
 
 export const MAX_TAGS = 20;
 
-export const SCHEMA_VERSION = 13;
+export const SCHEMA_VERSION = 14;
 
 export function defaultData() {
   return {
@@ -211,6 +211,18 @@ export function migrate(data) {
       tags: (d.tags || []).map((t) => ({ ...t, color: retok(t.color) })),
       tasks: (d.tasks || []).map((x) => ({ ...x, color: retok(x.color) })),
       trash: (d.trash || []).map((x) => ({ ...x, color: retok(x.color) })),
+    };
+  }
+
+  // v14: formalize the Pass-2 lazy fields. Per-task additions (note, subtasks,
+  // kind, meeting, rolled) stay lazy — absent means empty — so plain tasks
+  // keep their exact stored shape.
+  if (d.schemaVersion < 14) {
+    d = {
+      ...d,
+      schemaVersion: 14,
+      scratchpad: d.scratchpad || "",
+      barIntensity: d.barIntensity || "medium",
     };
   }
 

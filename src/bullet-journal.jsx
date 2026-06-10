@@ -369,11 +369,59 @@ export default function BulletJournal() {
       return next;
     });
 
-  const updateQuestion = (id, field, value) =>
+  const patchTask = (id, patch) =>
     update((d) => ({
       ...d,
-      tasks: d.tasks.map((x) => (x.id === id ? { ...x, [field]: value } : x)),
+      tasks: d.tasks.map((x) => (x.id === id ? { ...x, ...patch } : x)),
     }));
+
+  const addSubtask = (taskId, text) =>
+    update((d) => ({
+      ...d,
+      tasks: d.tasks.map((x) => (x.id === taskId
+        ? { ...x, subtasks: [...(x.subtasks || []), { id: d.nextId, text, done: false }] }
+        : x)),
+      nextId: d.nextId + 1,
+    }));
+
+  const patchSubtask = (taskId, subId, patch) =>
+    update((d) => ({
+      ...d,
+      tasks: d.tasks.map((x) => (x.id === taskId
+        ? { ...x, subtasks: (x.subtasks || []).map((s) => (s.id === subId ? { ...s, ...patch } : s)) }
+        : x)),
+    }));
+
+  const removeSubtask = (taskId, subId) =>
+    update((d) => ({
+      ...d,
+      tasks: d.tasks.map((x) => (x.id === taskId
+        ? { ...x, subtasks: (x.subtasks || []).filter((s) => s.id !== subId) }
+        : x)),
+    }));
+
+  // a meeting action item (or any sub-step) graduates into a real task in the
+  // current week, inheriting the parent's colour — one update, one undo step
+  const promoteSubtask = (taskId, subId) =>
+    update((d) => {
+      const parent = d.tasks.find((x) => x.id === taskId);
+      const sub = parent?.subtasks?.find((s) => s.id === subId);
+      if (!sub || !sub.text.trim()) return d;
+      const maxOrder = d.tasks.reduce((m, x) => Math.max(m, x.order ?? 0), 0);
+      return {
+        ...d,
+        tasks: d.tasks
+          .map((x) => (x.id === taskId
+            ? { ...x, subtasks: x.subtasks.filter((s) => s.id !== subId) }
+            : x))
+          .concat({
+            id: d.nextId, text: sub.text.trim(), status: "active",
+            created: Date.now(), week: currentWeekKey(), starred: false,
+            color: parent.color ?? null, order: maxOrder + 1,
+          }),
+        nextId: d.nextId + 1,
+      };
+    });
 
   const exportData = () => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -536,7 +584,13 @@ export default function BulletJournal() {
   // search results
   const q = query.trim().toLowerCase();
   const taskHits = searching
-    ? data.tasks.filter((x) => x.text.toLowerCase().includes(q))
+    ? data.tasks.filter((x) =>
+        x.text.toLowerCase().includes(q) ||
+        (x.note || "").toLowerCase().includes(q) ||
+        (x.questionWho || "").toLowerCase().includes(q) ||
+        (x.questionText || "").toLowerCase().includes(q) ||
+        (x.meeting?.attendees || "").toLowerCase().includes(q) ||
+        (x.subtasks || []).some((s) => s.text.toLowerCase().includes(q)))
     : [];
   const noteHits = searching
     ? Object.entries(data.weekNotes).filter(([, v]) => v && v.toLowerCase().includes(q))
@@ -740,9 +794,12 @@ export default function BulletJournal() {
                   isOver={dragEnabled && overId === x.id && dragId !== x.id}
                   onEdit={editTask} onSetColor={setTaskColor}
                   onStatusChange={changeStatus} onDelete={armedDelete}
-                  onToggleStar={toggleStar} onCreateTag={createTagInline} onUpdateQuestion={updateQuestion}
+                  onToggleStar={toggleStar} onCreateTag={createTagInline}
+                  onPatch={patchTask} onAddSubtask={addSubtask}
+                  onPatchSubtask={patchSubtask} onRemoveSubtask={removeSubtask}
+                  onPromoteSubtask={promoteSubtask}
                   confirmKey={confirmKey}
-                  isQExpanded={expandedQ.has(x.id)} onToggleQ={toggleQ}/>
+                  isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}/>
               ))}
             </div>
 
@@ -761,9 +818,12 @@ export default function BulletJournal() {
                         isOver={dragEnabled && overId === x.id && dragId !== x.id}
                         onEdit={editTask} onSetColor={setTaskColor}
                         onStatusChange={changeStatus} onDelete={armedDelete}
-                        onToggleStar={toggleStar} onCreateTag={createTagInline} onUpdateQuestion={updateQuestion}
+                        onToggleStar={toggleStar} onCreateTag={createTagInline}
+                        onPatch={patchTask} onAddSubtask={addSubtask}
+                        onPatchSubtask={patchSubtask} onRemoveSubtask={removeSubtask}
+                        onPromoteSubtask={promoteSubtask}
                         confirmKey={confirmKey}
-                        isQExpanded={expandedQ.has(x.id)} onToggleQ={toggleQ}/>
+                        isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}/>
                     ))}
                   </div>
                 )}

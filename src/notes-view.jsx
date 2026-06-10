@@ -12,15 +12,15 @@ export default function NotesView({ data, t, fonts, onSetScratchpad, goToWeek, o
     .filter(([, v]) => v && v.trim())
     .sort((a, b) => (a[0] < b[0] ? 1 : -1));
 
-  // tasks carrying any kind of note content (question fields now; free notes
-  // and meeting notes once tasks grow them)
+  // tasks carrying any note content: free notes/minutes, question fields,
+  // meeting attendees
   const noteText = (x) =>
-    [x.questionWho && `who: ${x.questionWho}`, x.questionText, x.note,
-      x.meeting?.attendees && `with: ${x.meeting.attendees}`, x.meeting?.notes]
+    [x.meeting?.attendees && `with: ${x.meeting.attendees}`, x.note,
+      x.questionWho && `who: ${x.questionWho}`, x.questionText]
       .filter(Boolean).join(" · ");
   const taskNotes = (data.tasks || [])
     .filter((x) => x.questionWho || x.questionText || x.note ||
-      x.meeting?.attendees || x.meeting?.notes)
+      x.meeting?.attendees)
     .sort((a, b) => (a.week < b.week ? 1 : a.week > b.week ? -1 : b.created - a.created));
 
   const sectionHead = {
