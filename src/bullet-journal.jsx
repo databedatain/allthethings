@@ -184,7 +184,7 @@ export default function BulletJournal() {
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
 
-  const theme = data ? buildTheme(data.theme) : buildTheme({});
+  const theme = data ? buildTheme(data.theme, data.colorPresence || "full") : buildTheme({});
 
   // keep the page background in sync with the theme
   useEffect(() => {
@@ -382,6 +382,7 @@ export default function BulletJournal() {
     update((d) => ({ ...d, density: id, taskFont: getDensity(id).taskFont }));
 
   const setBarIntensity = (id) => update((d) => ({ ...d, barIntensity: id }));
+  const setColorPresence = (id) => update((d) => ({ ...d, colorPresence: id }));
 
   const setTaskFont = (value) => update((d) => ({ ...d, taskFont: value }));
 
@@ -770,7 +771,7 @@ export default function BulletJournal() {
           paletteColors={paletteColors} confirmKey={confirmKey}
           onClose={() => setSettingsOpen(false)}
           actions={{
-            setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setTaskFont,
+            setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setColorPresence, setTaskFont,
             setHeadingFont, setBodyFont, addTag, removeTag, setTagName, setTagColor, setTagKind,
             onFontFile, resetFont, loadSamples, armOrRun,
             restoreFromTrash, deleteForever, emptyTrash, exportData, onImportFile,
@@ -781,7 +782,7 @@ export default function BulletJournal() {
         <span key={burst.key} className="bj-burst"
           style={{ left: burst.x, top: burst.y }}>
           {[0, 60, 120, 180, 240, 300].map((a) => (
-            <span key={a} style={{ "--a": `${a}deg`, background: t.accent }} />
+            <span key={a} style={{ "--a": `${a}deg`, background: t.celebrate }} />
           ))}
         </span>
       )}

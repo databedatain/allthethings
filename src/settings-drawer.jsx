@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import ColorPicker from "./color-picker.jsx";
 import { IconSun, IconMoon, IconUndo, IconX, IconPeople } from "./icons.jsx";
-import { PRESETS, PALETTES, ROW_INTENSITIES, getPalette, resolveColor } from "./theme.js";
+import { PRESETS, PALETTES, ROW_INTENSITIES, PRESENCES, getPalette, resolveColor } from "./theme.js";
 import { DENSITIES, MAX_TAGS } from "./weeks.js";
 import { FONTS } from "./font.js";
 import { TYPE, SP, CONTROL } from "./tokens.js";
@@ -102,7 +102,7 @@ function FontSelect({ value, onChange, hasCustom, t }) {
 /* ─── settings slide-over: appearance, tags, fonts, data, trash ─── */
 export default function SettingsDrawer({ t, fonts, data, fontName, paletteColors, confirmKey, onClose, actions }) {
   const {
-    setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setTaskFont,
+    setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setColorPresence, setTaskFont,
     setHeadingFont, setBodyFont, addTag, removeTag, setTagName, setTagColor, setTagKind,
     onFontFile, resetFont, loadSamples, armOrRun,
     restoreFromTrash, deleteForever, emptyTrash, exportData, onImportFile,
@@ -242,6 +242,22 @@ export default function SettingsDrawer({ t, fonts, data, fontName, paletteColors
                     align="left" size={16}
                     onChange={(c) => setThemeKey(t.dark ? "bgDark" : "bgLight", c)} />
                 </div>
+                <div style={settingRow}>
+                  <span>task bg</span>
+                  <ColorPicker
+                    value={(t.dark ? data.theme.taskBgDark : data.theme.taskBgLight) || null}
+                    t={t} colors={paletteColors} allowNone variant="bg"
+                    align="left" size={16}
+                    onChange={(c) => setThemeKey(t.dark ? "taskBgDark" : "taskBgLight", c)} />
+                </div>
+                <div style={settingRow}>
+                  <span>done</span>
+                  <ColorPicker
+                    value={(t.dark ? data.theme.doneDark : data.theme.doneLight) || null}
+                    t={t} colors={paletteColors} allowNone variant="bg"
+                    align="left" size={16}
+                    onChange={(c) => setThemeKey(t.dark ? "doneDark" : "doneLight", c)} />
+                </div>
               </div>
             </div>
           </div>
@@ -327,6 +343,21 @@ export default function SettingsDrawer({ t, fonts, data, fontName, paletteColors
                       : i === ROW_INTENSITIES.length - 1 ? "0 5px 5px 0" : 0,
                     borderLeft: i === 0 ? `1px solid ${t.border}` : "none",
                   }}>{s.id}</button>
+              ))}
+            </div>
+          </div>
+          {/* colour presence */}
+          <div>
+            <div style={{ ...settingRow, marginBottom: "4px" }}>colour presence</div>
+            <div style={{ display: "flex" }}>
+              {PRESENCES.map((p, i) => (
+                <button key={p} onClick={() => setColorPresence(p)}
+                  style={{
+                    ...segBtn((data.colorPresence || "full") === p),
+                    borderRadius: i === 0 ? "5px 0 0 5px"
+                      : i === PRESENCES.length - 1 ? "0 5px 5px 0" : 0,
+                    borderLeft: i === 0 ? `1px solid ${t.border}` : "none",
+                  }}>{p}</button>
               ))}
             </div>
           </div>

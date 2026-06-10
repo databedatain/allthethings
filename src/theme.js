@@ -78,7 +78,18 @@ export const THEME_DEFAULTS = {
   hold: "#a6afbb",
   bgLight: null,
   bgDark: null,
+  taskBgLight: null,
+  taskBgDark: null,
+  doneLight: null,
+  doneDark: null,
 };
+
+// Colour presence — how much colour the chrome carries. Bars (row tints) have
+// their own dial; this governs everything else: washes, accents, state icons.
+// danger and the celebration burst stay colored at every level — one reads as
+// destructive, the other is the deliberate dopamine moment.
+export const PRESENCES = ["none", "faint", "full"];
+const PRESENCE_F = { none: 1, faint: 0.55, full: 0 };
 
 function hexToRgb(hex) {
   const n = parseInt(hex.replace("#", ""), 16);
@@ -189,9 +200,25 @@ export function presetBg(highlight) {
   return { light: lighten(highlight, 0.91), dark: darken(highlight, 0.87) };
 }
 
-export function buildTheme(cfg) {
-  const { mode, highlight, star, hold, bgLight, bgDark } = { ...THEME_DEFAULTS, ...cfg };
+// pull a colour toward its own-luminance gray — hue drains, lightness stays,
+// so dimmed tokens keep their contrast relationships
+function dimColor(hex, f) {
+  if (!f) return hex;
+  const [r, g, b] = hexToRgb(hex);
+  const l = 0.299 * r + 0.587 * g + 0.114 * b;
+  return toHex(r + (l - r) * f, g + (l - g) * f, b + (l - b) * f);
+}
+
+export function buildTheme(cfg, presence = "full") {
+  const {
+    mode, highlight, star, hold, bgLight, bgDark,
+    taskBgLight, taskBgDark, doneLight, doneDark,
+  } = { ...THEME_DEFAULTS, ...cfg };
   const dark = mode === "dark";
+  const f = PRESENCE_F[presence] ?? 0;
+  const hl = dimColor(highlight, f);
+  const st = dimColor(star, f);
+  const hd = dimColor(hold, f);
   const defaultBg = dark
     ? "linear-gradient(180deg, #24262b 0%, #1b1c20 100%)"
     : "linear-gradient(180deg, #faf8f4 0%, #f4f1eb 100%)";
@@ -203,7 +230,7 @@ export function buildTheme(cfg) {
     surfaceAlt: dark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.4)",
     // solid task-row fills — uncoloured rows sit on an opaque card instead of
     // the translucent surface, so they read as deliberate rows, not glass.
-    rowBase: dark ? "#2b2d33" : "#fffdf9",
+    rowBase: (dark ? taskBgDark : taskBgLight) || (dark ? "#2b2d33" : "#fffdf9"),
     panel: dark ? "rgba(255,255,255,0.045)" : "rgba(255,255,255,0.6)",
     popover: dark ? "#2c2e33" : "#ffffff",
     text: dark ? "#e8e6e1" : "#2c2c2c",
@@ -215,19 +242,22 @@ export function buildTheme(cfg) {
     divider: dark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)",
     // more saturated so destructive actions actually read as destructive.
     danger: dark ? "#db8a84" : "#c1564f",
-    question: dark ? "#86a4cb" : "#6a8dba",
-    accent: highlight,
-    accentText: readableOn(highlight),
-    accentSoft: rgba(highlight, dark ? 0.24 : 0.16),
-    accentBorder: rgba(highlight, 0.5),
-    accentText2: dark ? lighten(highlight, 0.25) : darken(highlight, 0.18),
-    star,
-    starTint: rgba(star, dark ? 0.22 : 0.16),
-    starBorder: rgba(star, 0.55),
-    hold,
-    holdTint: rgba(hold, dark ? 0.18 : 0.15),
-    holdFill: dark ? darken(hold, 0.62) : lighten(hold, 0.82),
-    holdBorder: rgba(hold, 0.5),
-    holdText: dark ? lighten(hold, 0.3) : darken(hold, 0.28),
+    question: dimColor(dark ? "#86a4cb" : "#6a8dba", f),
+    accent: hl,
+    accentText: readableOn(hl),
+    accentSoft: rgba(hl, dark ? 0.24 : 0.16),
+    accentBorder: rgba(hl, 0.5),
+    accentText2: dark ? lighten(hl, 0.25) : darken(hl, 0.18),
+    // the burst keeps the theme's true highlight at every presence level
+    celebrate: highlight,
+    doneFill: (dark ? doneDark : doneLight) || rgba(hl, dark ? 0.24 : 0.16),
+    star: st,
+    starTint: rgba(st, dark ? 0.22 : 0.16),
+    starBorder: rgba(st, 0.55),
+    hold: hd,
+    holdTint: rgba(hd, dark ? 0.18 : 0.15),
+    holdFill: dark ? darken(hd, 0.62) : lighten(hd, 0.82),
+    holdBorder: rgba(hd, 0.5),
+    holdText: dark ? lighten(hd, 0.3) : darken(hd, 0.28),
   };
 }
