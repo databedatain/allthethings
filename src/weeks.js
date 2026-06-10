@@ -21,6 +21,14 @@ export function currentWeekKey() {
   return weekKey(new Date());
 }
 
+// Local-time day key, for day-scoped state (today's focus, done counts).
+export function todayKey() {
+  const d = new Date();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mo}-${da}`;
+}
+
 // `full` forces the month onto both ends (e.g. "May 4 – May 10"); otherwise
 // the trailing month is dropped when both dates share it.
 export function weekLabel(key, full) {
@@ -56,9 +64,11 @@ export function getDensity(id) {
 
 export const MAX_TAGS = 20;
 
+export const SCHEMA_VERSION = 15;
+
 export function defaultData() {
   return {
-    schemaVersion: 13,
+    schemaVersion: SCHEMA_VERSION,
     tasks: [],
     trash: [],
     weekNotes: {},
@@ -66,6 +76,10 @@ export function defaultData() {
     tags: [],
     sortMode: "custom",
     sortOrder: "oldest",
+    barIntensity: "medium",
+    scratchpad: "",
+    focus: { date: "", ids: [] },
+    doneLog: {},
     nextId: 1,
     theme: { ...THEME_DEFAULTS },
     palette: "default",
@@ -210,6 +224,29 @@ export function migrate(data) {
     };
   }
 
+  // v14: formalize the Pass-2 lazy fields. Per-task additions (note, subtasks,
+  // kind, meeting, rolled) stay lazy — absent means empty — so plain tasks
+  // keep their exact stored shape.
+  if (d.schemaVersion < 14) {
+    d = {
+      ...d,
+      schemaVersion: 14,
+      scratchpad: d.scratchpad || "",
+      barIntensity: d.barIntensity || "medium",
+    };
+  }
+
+  // v15: today's focus and the per-day done log. Inbox items are tasks with
+  // week: null, so no task shape change.
+  if (d.schemaVersion < 15) {
+    d = {
+      ...d,
+      schemaVersion: 15,
+      focus: d.focus || { date: "", ids: [] },
+      doneLog: d.doneLog || {},
+    };
+  }
+
   return d;
 }
 
@@ -221,10 +258,15 @@ export function rollIncompletes(data) {
   let changed = false;
   const counts = { ...(data.rolloutCounts || {}) };
   const tasks = data.tasks.map((t) => {
-    if (t.status !== "done" && t.week < cur) {
+    if (t.status !== "done" && t.week && t.week < cur) {
       changed = true;
       counts[t.week] = (counts[t.week] || 0) + 1;
-      return { ...t, week: cur };
+      // per-task age: add the weeks actually skipped, not just one per roll
+      // event, so a task untouched across a long absence ages correctly
+      const weeksBack = Math.round(
+        (new Date(`${cur}T00:00:00`) - new Date(`${t.week}T00:00:00`)) / (7 * 864e5)
+      );
+      return { ...t, week: cur, rolled: (t.rolled || 0) + weeksBack };
     }
     return t;
   });
