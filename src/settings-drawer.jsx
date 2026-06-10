@@ -102,7 +102,7 @@ function FontSelect({ value, onChange, hasCustom, t }) {
 /* ─── settings slide-over: appearance, tags, fonts, data, trash ─── */
 export default function SettingsDrawer({ t, fonts, data, fontName, paletteColors, confirmKey, onClose, actions }) {
   const {
-    setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setColorPresence, setTaskFont,
+    setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setColorPresence, setWrapText, setTaskFont,
     setHeadingFont, setBodyFont, addTag, removeTag, setTagName, setTagColor, setTagKind,
     onFontFile, resetFont, loadSamples, armOrRun,
     restoreFromTrash, deleteForever, emptyTrash, exportData, onImportFile,
@@ -343,6 +343,21 @@ export default function SettingsDrawer({ t, fonts, data, fontName, paletteColors
                       : i === ROW_INTENSITIES.length - 1 ? "0 5px 5px 0" : 0,
                     borderLeft: i === 0 ? `1px solid ${t.border}` : "none",
                   }}>{s.id}</button>
+              ))}
+            </div>
+          </div>
+          {/* text wrap */}
+          <div>
+            <div style={{ ...settingRow, marginBottom: "4px" }}>text wrap</div>
+            <div style={{ display: "flex" }}>
+              {[false, true].map((on, i) => (
+                <button key={String(on)} onClick={() => setWrapText(on)}
+                  title={on ? "Rows grow to fit their text" : "Rows stay one line; hover to read the rest"}
+                  style={{
+                    ...segBtn(!!data.wrapText === on),
+                    borderRadius: i === 0 ? "5px 0 0 5px" : "0 5px 5px 0",
+                    borderLeft: i === 0 ? `1px solid ${t.border}` : "none",
+                  }}>{on ? "wrap" : "one line"}</button>
               ))}
             </div>
           </div>
