@@ -81,6 +81,7 @@ export function defaultData() {
     focus: { date: "", ids: [] },
     doneLog: {},
     colorPresence: "full",
+    wrapText: false,
     nextId: 1,
     theme: { ...THEME_DEFAULTS },
     palette: "default",

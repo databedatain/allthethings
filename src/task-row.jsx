@@ -11,7 +11,7 @@ const formatDate = (ts) => {
 };
 
 /* ─── task row ─── */
-export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intensity, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask, onSetMeeting, isExpanded, onToggleDetail, isFocused, onToggleFocus, isSpotlit }) {
+export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intensity, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask, onSetMeeting, isExpanded, onToggleDetail, isFocused, onToggleFocus, isSpotlit, wrapText }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.text);
   const isHold = task.status === "hold";
@@ -98,23 +98,17 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
           onChange={(c) => onSetColor(task.id, c)}
           renderTrigger={(toggle) => (
             <button onClick={toggle}
-              title={tagOnTask ? `Tag: ${tagOnTask.name}` : task.color ? "Tag colour" : "Add tag"}
+              title={isMeeting ? `Meeting${tagOnTask ? ` · ${tagOnTask.name}` : ""}`
+                : tagOnTask ? `Tag: ${tagOnTask.name}`
+                : task.color ? "Tag colour" : "Add tag"}
               style={{ ...iconBtn, flexShrink: 0,
                 color: task.color ? taskColor : t.textFaint }}>
-              <IconTag size={ui.icon} filled={!!task.color} dashed={!task.color} />
+              {isMeeting
+                ? <IconPeople size={ui.icon} />
+                : <IconTag size={ui.icon} filled={!!task.color} dashed={!task.color} />}
             </button>
           )}
         />
-
-        {/* meeting marker — same box as the tag icon */}
-        {isMeeting && (
-          <span title="Meeting" style={{
-            color: t.question, display: "flex", alignItems: "center",
-            flexShrink: 0, padding: `${ui.btnPad}px`,
-          }}>
-            <IconPeople size={ui.icon} />
-          </span>
-        )}
 
         {/* text (click to edit) */}
         {editing ? (
@@ -136,8 +130,9 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
           />
         ) : (
           <span onClick={startEdit} title="Click to edit"
+            className={wrapText ? undefined : "bj-text-clip"}
             style={{
-              flex: 1, fontFamily: fonts.body, fontSize: `${ui.taskFont}px`,
+              flex: 1, minWidth: 0, fontFamily: fonts.body, fontSize: `${ui.taskFont}px`,
               color: isHold ? t.holdText : t.text, lineHeight: 1.35,
               fontStyle: isHold ? "italic" : "normal", cursor: "text",
               marginLeft: "4px",
@@ -145,17 +140,6 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
             {task.text}
             {isHold && <span style={{ fontSize: `${Math.round(ui.taskFont * 0.72)}px`, marginLeft: "8px", opacity: 0.7 }}>⏸ on hold</span>}
           </span>
-        )}
-
-        {/* sub-checklist progress */}
-        {subs.length > 0 && (
-          <span title={`${subsDone} of ${subs.length} done`}
-            style={{
-              fontFamily: fonts.body, fontSize: `${Math.max(10, ui.date - 2)}px`,
-              color: t.textMuted, border: `1px solid ${t.border}`,
-              borderRadius: CONTROL.pill, padding: "0 7px",
-              flexShrink: 0, whiteSpace: "nowrap",
-            }}>{subsDone}/{subs.length}</span>
         )}
 
         {/* rollover age — gentle visibility for tasks that keep moving on */}
@@ -169,24 +153,36 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
         )}
 
         {/* date — present on hover, out of the way otherwise */}
-        <span className="bj-row-action" style={{
+        <span className="bj-row-action bj-compact-hide" style={{
           fontFamily: fonts.body, fontSize: `${ui.date}px`,
           color: t.textMuted, flexShrink: 0, whiteSpace: "nowrap", marginRight: "4px",
         }}>{formatDate(task.created)}</span>
 
-        {/* detail toggle — visible when the task carries notes/subtasks/meeting */}
+        {/* detail toggle — the count pill stands in for the note glyph when
+            action items exist; either way it opens the panel */}
         <button onClick={() => onToggleDetail(task.id)}
-          title={isExpanded ? "Collapse details" : "Notes, action items, meeting"}
+          title={isExpanded ? "Collapse details"
+            : subs.length ? `${subsDone} of ${subs.length} done — notes, action items`
+            : "Notes, action items, meeting"}
           className={hasDetail ? undefined : "bj-row-action"}
-          style={{ ...iconBtn, color: hasDetail ? t.question : t.textFaint }}>
-          <IconNote size={ui.icon} />
+          style={{ ...iconBtn, flexShrink: 0, color: hasDetail ? t.question : t.textFaint }}>
+          {subs.length > 0 ? (
+            <span style={{
+              fontFamily: fonts.body, fontSize: `${Math.max(10, ui.date - 2)}px`,
+              fontWeight: 600, border: "1px solid currentColor",
+              borderRadius: CONTROL.pill, padding: "0 6px",
+              whiteSpace: "nowrap", lineHeight: 1.5,
+            }}>{subsDone}/{subs.length}</span>
+          ) : (
+            <IconNote size={ui.icon} />
+          )}
         </button>
 
         {/* today's focus — a set target stays visible like a set star */}
         {onToggleFocus && (
           <button onClick={() => onToggleFocus(task.id)}
             title={isFocused ? "Remove from today's focus" : "Add to today's focus (up to 3)"}
-            className={isFocused ? undefined : "bj-row-action"}
+            className={`${isFocused ? "" : "bj-row-action "}bj-compact-hide`}
             style={{ ...iconBtn, color: isFocused ? t.accentText2 : t.textFaint }}>
             <IconTarget size={ui.icon} />
           </button>
@@ -194,7 +190,7 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
 
         {/* star toggle — a set star stays visible; an empty one hides until hover */}
         <button onClick={() => onToggleStar(task.id)} title={isStar ? "Unstar" : "Star"}
-          className={isStar ? undefined : "bj-row-action"}
+          className={`${isStar ? "" : "bj-row-action "}bj-compact-hide`}
           style={{ ...iconBtn, color: isStar ? t.star : t.textFaint }}>
           <IconStar filled={isStar} size={ui.star} />
         </button>
@@ -202,7 +198,7 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
         {/* hold toggle — visible while on hold (resume affordance) */}
         <button onClick={() => onStatusChange(task.id, isHold ? "active" : "hold")}
           title={isHold ? "Resume" : "Put on hold"}
-          className={isHold ? undefined : "bj-row-action"}
+          className={`${isHold ? "" : "bj-row-action "}bj-compact-hide`}
           style={{ ...iconBtn, color: isHold ? t.holdText : t.textFaint }}>
           {isHold ? <IconUndo size={ui.icon} /> : <IconPause size={ui.icon} />}
         </button>
@@ -210,7 +206,7 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
         {/* delete — always secondary; stays revealed while the confirm is armed */}
         <button onClick={() => onDelete(task.id)}
           title={confirmKey === `del:${task.id}` ? "Click again to remove" : "Move to trash"}
-          className={`bj-row-action${confirmKey === `del:${task.id}` ? " is-armed" : ""}`}
+          className={`bj-row-action bj-compact-hide${confirmKey === `del:${task.id}` ? " is-armed" : ""}`}
           style={{
             ...iconBtn,
             color: confirmKey === `del:${task.id}` ? t.danger : t.textFaint,
@@ -238,14 +234,18 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
           isMeeting={isMeeting} onSetMeeting={onSetMeeting}
           onPatch={onPatch} onAddSubtask={onAddSubtask}
           onPatchSubtask={onPatchSubtask} onRemoveSubtask={onRemoveSubtask}
-          onPromoteSubtask={onPromoteSubtask} />
+          onPromoteSubtask={onPromoteSubtask}
+          rowActions={{ isStar, isHold, isFocused, confirmKey,
+            onToggleStar, onToggleFocus, onStatusChange, onDelete }} />
       )}
     </div>
   );
 }
 
 /* ─── done row ─── */
-export function DoneRow({ task, t, fonts, ui, tags, confirmKey, onRestore, onDelete, isExpanded, onToggleDetail, panelProps }) {
+export function DoneRow({ task, t, fonts, ui, tags, confirmKey, onRestore, onDelete, isExpanded, onToggleDetail, panelProps, wrapText }) {
+  const dSubs = task.subtasks || [];
+  const dSubsDone = dSubs.filter((s) => s.done).length;
   const isMeeting = tags?.find((tg) => tg.color === task.color)?.kind === "meeting";
   const hasDetail = !!(task.questionWho || task.questionText || task.note ||
     task.subtasks?.length || isMeeting);
@@ -265,8 +265,8 @@ export function DoneRow({ task, t, fonts, ui, tags, confirmKey, onRestore, onDel
           display: "flex", alignItems: "center", justifyContent: "center",
           color: t.accentText, flexShrink: 0, padding: 0,
         }}><IconCheck size={ui.doneCheck} /></button>
-      <span style={{
-        flex: 1, fontFamily: fonts.body, fontSize: `${Math.round(ui.taskFont * 0.92)}px`,
+      <span className={wrapText ? undefined : "bj-text-clip"} style={{
+        flex: 1, minWidth: 0, fontFamily: fonts.body, fontSize: `${Math.round(ui.taskFont * 0.92)}px`,
         color: t.textMuted, textDecoration: "line-through",
         textDecorationColor: t.textFaint,
       }}>{task.text}</span>
@@ -282,7 +282,16 @@ export function DoneRow({ task, t, fonts, ui, tags, confirmKey, onRestore, onDel
             color: hasDetail ? t.question : t.textFaint,
             display: "flex", alignItems: "center",
           }}>
-          <IconNote size={ui.icon} />
+          {dSubs.length > 0 ? (
+            <span style={{
+              fontFamily: fonts.body, fontSize: `${Math.max(10, ui.date - 3)}px`,
+              fontWeight: 600, border: "1px solid currentColor",
+              borderRadius: CONTROL.pill, padding: "0 6px",
+              whiteSpace: "nowrap", lineHeight: 1.5,
+            }}>{dSubsDone}/{dSubs.length}</span>
+          ) : (
+            <IconNote size={ui.icon} />
+          )}
         </button>
       )}
       <button onClick={() => onDelete(task.id)}
@@ -471,7 +480,7 @@ export function AddTaskRow({ t, fonts, colors, tags, ui, intensity, draft, onCha
  * sections — meeting | action items | questions. A meeting is the same task
  * wearing the meeting tag: attendees appear and the checklist relabels in
  * spirit (it's always "action items" now). */
-export function TaskDetailPanel({ task, t, fonts, ui, isMeeting, onSetMeeting, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask }) {
+export function TaskDetailPanel({ task, t, fonts, ui, isMeeting, onSetMeeting, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask, rowActions }) {
   const subs = task.subtasks || [];
   const subsDone = subs.filter((s) => s.done).length;
   const hasQ = !!(task.questionWho || task.questionText);
@@ -654,6 +663,32 @@ export function TaskDetailPanel({ task, t, fonts, ui, isMeeting, onSetMeeting, o
               />
             </div>
           </div>
+        </div>
+      )}
+
+      {/* compact widths fold the row's secondary actions down here */}
+      {rowActions && (
+        <div className="bj-panel-actions" style={{ ...section, flexDirection: "row", flexWrap: "wrap", gap: "6px" }}>
+          {rowActions.onToggleFocus && (
+            <button style={pill(rowActions.isFocused)}
+              onClick={() => rowActions.onToggleFocus(task.id)}>
+              <IconTarget size={ui.qLabel} /> focus
+            </button>
+          )}
+          <button style={pill(rowActions.isStar)}
+            onClick={() => rowActions.onToggleStar(task.id)}>
+            <IconStar size={ui.qLabel} filled={rowActions.isStar} /> star
+          </button>
+          <button style={pill(rowActions.isHold)}
+            onClick={() => rowActions.onStatusChange(task.id, rowActions.isHold ? "active" : "hold")}>
+            <IconPause size={ui.qLabel} /> {rowActions.isHold ? "resume" : "hold"}
+          </button>
+          <button onClick={() => rowActions.onDelete(task.id)}
+            style={{ ...pill(false),
+              color: t.danger, borderColor: rowActions.confirmKey === `del:${task.id}` ? t.danger : t.border,
+              fontWeight: rowActions.confirmKey === `del:${task.id}` ? 700 : 400 }}>
+            <IconTrash size={ui.qLabel} /> {rowActions.confirmKey === `del:${task.id}` ? "sure?" : "trash"}
+          </button>
         </div>
       )}
 

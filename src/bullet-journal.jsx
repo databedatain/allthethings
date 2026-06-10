@@ -20,7 +20,7 @@ import {
   fontStack,
   loadCatalogFonts,
 } from "./font.js";
-import { buildTheme, colorToken, presetBg, PRESETS, getPalette } from "./theme.js";
+import { buildTheme, colorToken, resolveColor, rgba, presetBg, PRESETS, getPalette } from "./theme.js";
 import { TYPE, SP, CONTROL } from "./tokens.js";
 import { TaskRow, DoneRow, AddTaskRow } from "./task-row.jsx";
 import TopBar from "./top-bar.jsx";
@@ -59,6 +59,7 @@ export default function BulletJournal() {
     questionWho: "", questionText: "", showQ: false,
   });
   const [query, setQuery] = useState("");
+  const [tagFilter, setTagFilter] = useState(null);
   const [doneOpen, setDoneOpen] = useState(() => new Map());
   const [showHold, setShowHold] = useState(true);
   const [expandedQ, setExpandedQ] = useState(() => new Set());
@@ -383,6 +384,7 @@ export default function BulletJournal() {
 
   const setBarIntensity = (id) => update((d) => ({ ...d, barIntensity: id }));
   const setColorPresence = (id) => update((d) => ({ ...d, colorPresence: id }));
+  const setWrapText = (on) => update((d) => ({ ...d, wrapText: !!on }));
 
   const setTaskFont = (value) => update((d) => ({ ...d, taskFont: value }));
 
@@ -608,7 +610,7 @@ export default function BulletJournal() {
   const isCurrent = selectedWeek === cur;
   const isPast = !isCurrent && !isEverything && !isNotes;
   const canAdd = isCurrent || isEverything;
-  const searching = query.trim().length > 0;
+  const searching = query.trim().length > 0 || !!tagFilter;
 
   // done section: open by default in past weeks, closed elsewhere; manual
   // toggles per week override the default
@@ -662,15 +664,6 @@ export default function BulletJournal() {
       document.getElementById(`bj-task-${x.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
   };
 
-  const clearDone = () =>
-    update((d) => ({
-      ...d,
-      tasks: d.tasks.filter((x) => {
-        if (x.status !== "done") return true;
-        return x.week !== selectedWeek;
-      }),
-    }));
-
   // drag reorder within whichever list (active or hold) holds both rows
   const dragEnabled = data.sortMode === "custom" && !searching;
   const handleDrop = (targetId) => {
@@ -701,23 +694,32 @@ export default function BulletJournal() {
     onEnd: () => { setDragId(null); setOverId(null); },
   };
 
-  // search results
+  // search results — typed text and/or a tag-chip filter (they AND together).
+  // A tag's name also matches its tasks, so typing "meeting" finds the tagged.
   const q = query.trim().toLowerCase();
+  const namedTags = (data.tags || []).filter((tg) => tg.name?.trim());
+  const tagName = (c) => namedTags.find((tg) => tg.color === c)?.name || "";
   const taskHits = searching
-    ? data.tasks.filter((x) =>
-        x.text.toLowerCase().includes(q) ||
-        (x.note || "").toLowerCase().includes(q) ||
-        (x.questionWho || "").toLowerCase().includes(q) ||
-        (x.questionText || "").toLowerCase().includes(q) ||
-        (x.meeting?.attendees || "").toLowerCase().includes(q) ||
-        (x.subtasks || []).some((s) => s.text.toLowerCase().includes(q)))
+    ? data.tasks.filter((x) => {
+        if (tagFilter && x.color !== tagFilter) return false;
+        if (!q) return true;
+        return (
+          x.text.toLowerCase().includes(q) ||
+          tagName(x.color).toLowerCase().includes(q) ||
+          (x.note || "").toLowerCase().includes(q) ||
+          (x.questionWho || "").toLowerCase().includes(q) ||
+          (x.questionText || "").toLowerCase().includes(q) ||
+          (x.meeting?.attendees || "").toLowerCase().includes(q) ||
+          (x.subtasks || []).some((s) => s.text.toLowerCase().includes(q))
+        );
+      })
     : [];
-  const noteHits = searching
+  const noteHits = q
     ? Object.entries(data.weekNotes).filter(([, v]) => v && v.toLowerCase().includes(q))
     : [];
-  const scratchpadHit = searching && (data.scratchpad || "").toLowerCase().includes(q);
+  const scratchpadHit = q.length > 0 && (data.scratchpad || "").toLowerCase().includes(q);
 
-  const goToWeek = (wk) => { setSelectedWeek(wk); setQuery(""); };
+  const goToWeek = (wk) => { setSelectedWeek(wk); setQuery(""); setTagFilter(null); };
 
   // detail-panel handlers bundled for DoneRow's in-place panel
   const panelProps = {
@@ -771,7 +773,7 @@ export default function BulletJournal() {
           paletteColors={paletteColors} confirmKey={confirmKey}
           onClose={() => setSettingsOpen(false)}
           actions={{
-            setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setColorPresence, setTaskFont,
+            setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setColorPresence, setWrapText, setTaskFont,
             setHeadingFont, setBodyFont, addTag, removeTag, setTagName, setTagColor, setTagKind,
             onFontFile, resetFont, loadSamples, armOrRun,
             restoreFromTrash, deleteForever, emptyTrash, exportData, onImportFile,
@@ -794,8 +796,34 @@ export default function BulletJournal() {
           <div>
             <h1 style={{ fontFamily: fonts.heading, fontSize: TYPE.display, fontWeight: 600,
               color: t.text, margin: "0 0 14px", lineHeight: 1.1 }}>
-              search · “{query.trim()}”
+              search{q ? <> · “{query.trim()}”</> : tagFilter ? <> · {tagName(tagFilter) || "tag"}</> : null}
             </h1>
+            {namedTags.length > 0 && (
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "14px" }}>
+                {namedTags.map((tg) => {
+                  const hex = resolveColor(tg.color, paletteColors);
+                  const active = tagFilter === tg.color;
+                  return (
+                    <button key={tg.color}
+                      onClick={() => setTagFilter(active ? null : tg.color)}
+                      title={active ? "Clear tag filter" : `Only ${tg.name}`}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "6px",
+                        fontFamily: fonts.body, fontSize: TYPE.label,
+                        padding: "3px 10px", borderRadius: CONTROL.pill, cursor: "pointer",
+                        border: `1px solid ${active ? hex : t.border}`,
+                        background: active ? rgba(hex, t.dark ? 0.28 : 0.16) : "transparent",
+                        color: active ? t.text : t.textMuted,
+                        fontWeight: active ? 600 : 400,
+                      }}>
+                      <span style={{ width: 9, height: 9, borderRadius: "50%",
+                        background: hex, flexShrink: 0 }} />
+                      {tg.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {taskHits.length === 0 && noteHits.length === 0 && !scratchpadHit && (
               <div style={{ fontFamily: fonts.heading, fontSize: TYPE.heading, color: t.textFaint }}>
                 no matches
@@ -970,14 +998,14 @@ export default function BulletJournal() {
                 <div style={{ display: "flex", flexDirection: "column", gap: `${ui.taskGap}px` }}>
                   {focusTasks.map((x) => x.status === "done" ? (
                     <DoneRow key={x.id} task={x} t={t} fonts={fonts} ui={ui}
-                      tags={data.tags} confirmKey={confirmKey}
+                      tags={data.tags} confirmKey={confirmKey} wrapText={!!data.wrapText}
                       onRestore={(id) => changeStatus(id, "active")}
                       onDelete={armedDelete}
                       isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
                       panelProps={panelProps}/>
                   ) : (
                     <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} tags={data.tags} drag={drag}
-                      ui={ui} intensity={data.barIntensity || "medium"}
+                      ui={ui} intensity={data.barIntensity || "medium"} wrapText={!!data.wrapText}
                       isOver={false}
                       onEdit={editTask} onSetColor={setTaskColor}
                       onStatusChange={changeStatus} onDelete={armedDelete}
@@ -1017,7 +1045,7 @@ export default function BulletJournal() {
               )}
               {activeTasks.map((x) => (
                 <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} tags={data.tags} drag={drag}
-                  ui={ui} intensity={data.barIntensity || "medium"}
+                  ui={ui} intensity={data.barIntensity || "medium"} wrapText={!!data.wrapText}
                   isOver={dragEnabled && overId === x.id && dragId !== x.id}
                   onEdit={editTask} onSetColor={setTaskColor}
                   onStatusChange={changeStatus} onDelete={armedDelete}
@@ -1044,7 +1072,7 @@ export default function BulletJournal() {
                     gap: `${ui.taskGap}px` }}>
                     {holdTasks.map((x) => (
                       <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} tags={data.tags} drag={drag}
-                        ui={ui} intensity={data.barIntensity || "medium"}
+                        ui={ui} intensity={data.barIntensity || "medium"} wrapText={!!data.wrapText}
                         isOver={dragEnabled && overId === x.id && dragId !== x.id}
                         onEdit={editTask} onSetColor={setTaskColor}
                         onStatusChange={changeStatus} onDelete={armedDelete}
@@ -1068,31 +1096,17 @@ export default function BulletJournal() {
               <div style={{ marginBottom: "16px" }}>
                 <SectionToggle t={t} fonts={fonts} open={showDone}
                   onToggle={toggleShowDone}
-                  label={`done (${doneTasks.length})`}
-                  extra={!showDone && !isEverything && (
-                    <span onClick={(e) => { e.stopPropagation(); clearDone(); }}
-                      style={{ fontFamily: fonts.body, fontSize: TYPE.label, marginLeft: "8px", color: t.danger }}
-                      title="Clear done in this week">
-                      clear
-                    </span>
-                  )} />
+                  label={`done (${doneTasks.length})`} />
                 {showDone && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                     {doneTasks.map((x) => (
                       <DoneRow key={x.id} task={x} t={t} fonts={fonts} ui={ui}
-                        tags={data.tags} confirmKey={confirmKey}
+                        tags={data.tags} confirmKey={confirmKey} wrapText={!!data.wrapText}
                         onRestore={(id) => changeStatus(id, "active")}
                         onDelete={armedDelete}
                         isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
                         panelProps={panelProps}/>
                     ))}
-                    {!isEverything && (
-                      <button onClick={clearDone} style={{
-                        background: "none", border: "none", cursor: "pointer",
-                        fontFamily: fonts.body, fontSize: TYPE.body,
-                        color: t.danger, padding: "8px 0 0", textAlign: "left",
-                      }}>clear done in this week</button>
-                    )}
                   </div>
                 )}
               </div>
