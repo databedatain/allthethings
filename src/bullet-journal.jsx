@@ -385,6 +385,7 @@ export default function BulletJournal() {
   const setBarIntensity = (id) => update((d) => ({ ...d, barIntensity: id }));
   const setColorPresence = (id) => update((d) => ({ ...d, colorPresence: id }));
   const setWrapText = (on) => update((d) => ({ ...d, wrapText: !!on }));
+  const setCompactRows = (id) => update((d) => ({ ...d, compactRows: id }));
 
   const setTaskFont = (value) => update((d) => ({ ...d, taskFont: value }));
 
@@ -705,7 +706,6 @@ export default function BulletJournal() {
         if (!q) return true;
         return (
           x.text.toLowerCase().includes(q) ||
-          tagName(x.color).toLowerCase().includes(q) ||
           (x.note || "").toLowerCase().includes(q) ||
           (x.questionWho || "").toLowerCase().includes(q) ||
           (x.questionText || "").toLowerCase().includes(q) ||
@@ -761,11 +761,13 @@ export default function BulletJournal() {
   );
 
   return (
-    <div className="bj-root">
+    <div className={`bj-root bj-compact-${data.compactRows || "off"}`}>
       <TopBar t={t} fonts={fonts} query={query} setQuery={setQuery}
         searching={searching} selectedWeek={selectedWeek} cur={cur}
         weeksDesc={weeksDesc} goToWeek={goToWeek}
         inboxCount={inboxTasks.length} onCapture={addToInbox}
+        tagOptions={namedTags.map((tg) => ({ ...tg, hex: resolveColor(tg.color, paletteColors) }))}
+        tagFilter={tagFilter} onTagFilter={setTagFilter}
         onOpenSettings={() => setSettingsOpen(true)} />
 
       {settingsOpen && (
@@ -773,7 +775,7 @@ export default function BulletJournal() {
           paletteColors={paletteColors} confirmKey={confirmKey}
           onClose={() => setSettingsOpen(false)}
           actions={{
-            setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setColorPresence, setWrapText, setTaskFont,
+            setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setColorPresence, setWrapText, setCompactRows, setTaskFont,
             setHeadingFont, setBodyFont, addTag, removeTag, setTagName, setTagColor, setTagKind,
             onFontFile, resetFont, loadSamples, armOrRun,
             restoreFromTrash, deleteForever, emptyTrash, exportData, onImportFile,
@@ -847,9 +849,19 @@ export default function BulletJournal() {
                       }}>
                       <span>{x.text}</span>
                       <span style={{ fontFamily: fonts.body, fontSize: TYPE.label,
-                        color: t.textMuted, whiteSpace: "nowrap" }}>
-                        {!x.week ? "inbox" : x.week === cur ? "this week" : weekLabel(x.week, true)}
-                        {x.status === "done" ? " · done" : x.status === "hold" ? " · hold" : ""}
+                        color: t.textMuted, whiteSpace: "nowrap", display: "flex",
+                        alignItems: "center", gap: "6px" }}>
+                        {tagName(x.color) && (
+                          <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                            <span style={{ width: 8, height: 8, borderRadius: "50%",
+                              background: resolveColor(x.color, paletteColors), flexShrink: 0 }} />
+                            {tagName(x.color)}
+                          </span>
+                        )}
+                        <span>
+                          {!x.week ? "inbox" : x.week === cur ? "this week" : weekLabel(x.week, true)}
+                          {x.status === "done" ? " · done" : x.status === "hold" ? " · hold" : ""}
+                        </span>
                       </span>
                     </button>
                   ))}

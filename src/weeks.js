@@ -82,6 +82,7 @@ export function defaultData() {
     doneLog: {},
     colorPresence: "full",
     wrapText: false,
+    compactRows: "off",
     nextId: 1,
     theme: { ...THEME_DEFAULTS },
     palette: "default",

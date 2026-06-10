@@ -165,12 +165,19 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
             : subs.length ? `${subsDone} of ${subs.length} done — notes, action items`
             : "Notes, action items, meeting"}
           className={hasDetail ? undefined : "bj-row-action"}
-          style={{ ...iconBtn, flexShrink: 0, color: hasDetail ? t.question : t.textFaint }}>
+          style={{
+            ...iconBtn, padding: 0, flexShrink: 0,
+            // fixed slot: icon or count pill, the box never changes width,
+            // so everything to its left stays put
+            width: `${Math.round(ui.icon * 2.6)}px`,
+            justifyContent: "center",
+            color: hasDetail ? t.question : t.textFaint,
+          }}>
           {subs.length > 0 ? (
             <span style={{
               fontFamily: fonts.body, fontSize: `${Math.max(10, ui.date - 2)}px`,
               fontWeight: 600, border: "1px solid currentColor",
-              borderRadius: CONTROL.pill, padding: "0 6px",
+              borderRadius: CONTROL.pill, padding: "0 5px",
               whiteSpace: "nowrap", lineHeight: 1.5,
             }}>{subsDone}/{subs.length}</span>
           ) : (
@@ -278,9 +285,10 @@ export function DoneRow({ task, t, fonts, ui, tags, confirmKey, onRestore, onDel
           title={isExpanded ? "Collapse details" : "Notes, action items"}
           className={hasDetail ? undefined : "bj-row-action"}
           style={{
-            background: "none", border: "none", cursor: "pointer", padding: "3px",
+            background: "none", border: "none", cursor: "pointer", padding: 0,
+            width: `${Math.round(ui.icon * 2.6)}px`, flexShrink: 0,
             color: hasDetail ? t.question : t.textFaint,
-            display: "flex", alignItems: "center",
+            display: "flex", alignItems: "center", justifyContent: "center",
           }}>
           {dSubs.length > 0 ? (
             <span style={{

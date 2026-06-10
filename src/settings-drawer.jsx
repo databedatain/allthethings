@@ -102,7 +102,7 @@ function FontSelect({ value, onChange, hasCustom, t }) {
 /* ─── settings slide-over: appearance, tags, fonts, data, trash ─── */
 export default function SettingsDrawer({ t, fonts, data, fontName, paletteColors, confirmKey, onClose, actions }) {
   const {
-    setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setColorPresence, setWrapText, setTaskFont,
+    setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setColorPresence, setWrapText, setCompactRows, setTaskFont,
     setHeadingFont, setBodyFont, addTag, removeTag, setTagName, setTagColor, setTagKind,
     onFontFile, resetFont, loadSamples, armOrRun,
     restoreFromTrash, deleteForever, emptyTrash, exportData, onImportFile,
@@ -358,6 +358,23 @@ export default function SettingsDrawer({ t, fonts, data, fontName, paletteColors
                     borderRadius: i === 0 ? "5px 0 0 5px" : "0 5px 5px 0",
                     borderLeft: i === 0 ? `1px solid ${t.border}` : "none",
                   }}>{on ? "wrap" : "one line"}</button>
+              ))}
+            </div>
+          </div>
+          {/* compact rows */}
+          <div>
+            <div style={{ ...settingRow, marginBottom: "4px" }}>compact rows</div>
+            <div style={{ display: "flex" }}>
+              {["off", "auto", "on"].map((m, i) => (
+                <button key={m} onClick={() => setCompactRows(m)}
+                  title={m === "off" ? "All row actions stay on the row"
+                    : m === "auto" ? "Fold secondary actions into the panel on narrow screens"
+                    : "Always fold secondary actions into the panel"}
+                  style={{
+                    ...segBtn((data.compactRows || "off") === m),
+                    borderRadius: i === 0 ? "5px 0 0 5px" : i === 2 ? "0 5px 5px 0" : 0,
+                    borderLeft: i === 0 ? `1px solid ${t.border}` : "none",
+                  }}>{m}</button>
               ))}
             </div>
           </div>
