@@ -714,10 +714,11 @@ export default function BulletJournal() {
         );
       })
     : [];
-  const noteHits = q
+  const noteHits = q && !tagFilter
     ? Object.entries(data.weekNotes).filter(([, v]) => v && v.toLowerCase().includes(q))
     : [];
-  const scratchpadHit = q.length > 0 && (data.scratchpad || "").toLowerCase().includes(q);
+  const scratchpadHit = q.length > 0 && !tagFilter &&
+    (data.scratchpad || "").toLowerCase().includes(q);
 
   const goToWeek = (wk) => { setSelectedWeek(wk); setQuery(""); setTagFilter(null); };
 
@@ -761,7 +762,7 @@ export default function BulletJournal() {
   );
 
   return (
-    <div className={`bj-root bj-compact-${data.compactRows || "off"}`}>
+    <div className={`bj-root bj-compact-${data.compactRows || "auto"}`}>
       <TopBar t={t} fonts={fonts} query={query} setQuery={setQuery}
         searching={searching} selectedWeek={selectedWeek} cur={cur}
         weeksDesc={weeksDesc} goToWeek={goToWeek}

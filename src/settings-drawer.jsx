@@ -371,7 +371,7 @@ export default function SettingsDrawer({ t, fonts, data, fontName, paletteColors
                     : m === "auto" ? "Fold secondary actions into the panel on narrow screens"
                     : "Always fold secondary actions into the panel"}
                   style={{
-                    ...segBtn((data.compactRows || "off") === m),
+                    ...segBtn((data.compactRows || "auto") === m),
                     borderRadius: i === 0 ? "5px 0 0 5px" : i === 2 ? "0 5px 5px 0" : 0,
                     borderLeft: i === 0 ? `1px solid ${t.border}` : "none",
                   }}>{m}</button>
