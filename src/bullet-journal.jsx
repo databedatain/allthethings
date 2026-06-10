@@ -10,6 +10,7 @@ import {
   DENSITIES,
   getDensity,
   MAX_TAGS,
+  SCHEMA_VERSION,
 } from "./weeks.js";
 import {
   loadFont,
@@ -26,6 +27,8 @@ import { TYPE, SP, CONTROL } from "./tokens.js";
 import ColorPicker from "./color-picker.jsx";
 
 const STORAGE_KEY = "bullet-journal-data";
+// Pre-migration / pre-import safety net: the untouched previous snapshot.
+const BACKUP_KEY = "bullet-journal-backup";
 
 const formatDate = (ts) => {
   const d = new Date(ts);
@@ -709,6 +712,7 @@ export default function BulletJournal() {
   const [confirmKey, setConfirmKey] = useState(null);
   const saveTimer = useRef(null);
   const inputRef = useRef(null);
+  const importRef = useRef(null);
   const confirmTimer = useRef(null);
   const history = useRef({ past: [], future: [] });
 
@@ -719,6 +723,10 @@ export default function BulletJournal() {
       try {
         const result = await window.storage.get(STORAGE_KEY);
         const raw = result ? JSON.parse(result.value) : null;
+        // about to upgrade an older snapshot — keep its exact bytes recoverable
+        if (raw && (raw.schemaVersion || 0) < SCHEMA_VERSION) {
+          try { await window.storage.set(BACKUP_KEY, result.value); } catch {}
+        }
         setData(rollIncompletes(migrate(raw)));
       } catch {
         setData(defaultData());
@@ -1006,6 +1014,29 @@ export default function BulletJournal() {
       ...d,
       tasks: d.tasks.map((x) => (x.id === id ? { ...x, [field]: value } : x)),
     }));
+
+  const exportData = () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bullet-journal-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const onImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const raw = JSON.parse(await file.text());
+      if (!raw || !Array.isArray(raw.tasks)) return;
+      // the data being replaced stays recoverable under the backup key
+      try { await window.storage.set(BACKUP_KEY, JSON.stringify(data)); } catch {}
+      update(() => rollIncompletes(migrate(raw)));
+    } catch {}
+  };
 
   const onFontFile = async (e) => {
     const file = e.target.files?.[0];
@@ -1462,6 +1493,23 @@ export default function BulletJournal() {
                   style={{ flex: 1, minWidth: 0, accentColor: t.accent }} />
                 <span style={{ width: "22px", textAlign: "right" }}>{data.taskFont}</span>
               </div>
+            </div>
+            {/* data backup */}
+            <div>
+              <div style={{ ...settingRow, marginBottom: "4px" }}>data</div>
+              <button onClick={exportData} style={{ ...linkBtn, display: "block", marginBottom: "4px" }}>
+                ↓ download backup
+              </button>
+              <button onClick={() => armOrRun("import", () => importRef.current?.click())}
+                style={{
+                  ...linkBtn, display: "block",
+                  color: confirmKey === "import" ? t.danger : t.question,
+                  fontWeight: confirmKey === "import" ? 700 : 400,
+                }}>
+                {confirmKey === "import" ? "replaces everything — sure?" : "↑ restore from file…"}
+              </button>
+              <input ref={importRef} type="file" accept=".json,application/json"
+                onChange={onImportFile} style={{ display: "none" }} />
             </div>
             <button onClick={loadSamples} style={{ ...linkBtn }}>
               + load sample weeks

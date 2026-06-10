@@ -56,9 +56,11 @@ export function getDensity(id) {
 
 export const MAX_TAGS = 20;
 
+export const SCHEMA_VERSION = 13;
+
 export function defaultData() {
   return {
-    schemaVersion: 13,
+    schemaVersion: SCHEMA_VERSION,
     tasks: [],
     trash: [],
     weekNotes: {},
