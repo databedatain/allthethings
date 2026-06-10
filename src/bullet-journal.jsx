@@ -25,6 +25,7 @@ import ColorPicker from "./color-picker.jsx";
 import { IconCheck, IconPause, IconPlus, IconTrash, IconUndo, IconQuestion, IconStar, IconGrip } from "./icons.jsx";
 import TopBar from "./top-bar.jsx";
 import SettingsDrawer from "./settings-drawer.jsx";
+import NotesView from "./notes-view.jsx";
 
 const STORAGE_KEY = "bullet-journal-data";
 // Pre-migration / pre-import safety net: the untouched previous snapshot.
@@ -755,6 +756,8 @@ export default function BulletJournal() {
   const setWeekNote = (key, notes) =>
     update((d) => ({ ...d, weekNotes: { ...d.weekNotes, [key]: notes } }));
 
+  const setScratchpad = (text) => update((d) => ({ ...d, scratchpad: text }));
+
   const setSortMode = (mode) => update((d) => ({ ...d, sortMode: mode }));
   // click the date control: switch to date sort, or flip direction if already on it
   const clickDateSort = () =>
@@ -943,8 +946,9 @@ export default function BulletJournal() {
 
   const cur = currentWeekKey();
   const isEverything = selectedWeek === "everything";
+  const isNotes = selectedWeek === "notes";
   const isCurrent = selectedWeek === cur;
-  const isPast = !isCurrent && !isEverything;
+  const isPast = !isCurrent && !isEverything && !isNotes;
   const canAdd = isCurrent || isEverything;
   const searching = query.trim().length > 0;
 
@@ -1027,6 +1031,7 @@ export default function BulletJournal() {
   const noteHits = searching
     ? Object.entries(data.weekNotes).filter(([, v]) => v && v.toLowerCase().includes(q))
     : [];
+  const scratchpadHit = searching && (data.scratchpad || "").toLowerCase().includes(q);
 
   const goToWeek = (wk) => { setSelectedWeek(wk); setQuery(""); };
 
@@ -1090,7 +1095,7 @@ export default function BulletJournal() {
               color: t.text, margin: "0 0 14px", lineHeight: 1.1 }}>
               search · “{query.trim()}”
             </h1>
-            {taskHits.length === 0 && noteHits.length === 0 && (
+            {taskHits.length === 0 && noteHits.length === 0 && !scratchpadHit && (
               <div style={{ fontFamily: fonts.heading, fontSize: TYPE.heading, color: t.textFaint }}>
                 no matches
               </div>
@@ -1122,13 +1127,27 @@ export default function BulletJournal() {
                 </div>
               </div>
             )}
-            {noteHits.length > 0 && (
+            {(noteHits.length > 0 || scratchpadHit) && (
               <div>
                 <div style={{ fontFamily: fonts.heading, fontSize: TYPE.heading,
                   color: t.textMuted, marginBottom: "6px" }}>
-                  notes ({noteHits.length})
+                  notes ({noteHits.length + (scratchpadHit ? 1 : 0)})
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                  {scratchpadHit && (
+                    <button onClick={() => goToWeek("notes")}
+                      style={{
+                        textAlign: "left", cursor: "pointer",
+                        background: t.surface, border: `1px solid ${t.border}`,
+                        borderRadius: "6px", padding: "8px 11px",
+                        fontFamily: fonts.body, fontSize: TYPE.body, color: t.textMuted,
+                      }}>
+                      <span style={{ fontFamily: fonts.body, fontSize: TYPE.body,
+                        color: t.text }}>scratchpad</span>
+                      {" — "}
+                      {data.scratchpad.length > 90 ? data.scratchpad.slice(0, 90) + "…" : data.scratchpad}
+                    </button>
+                  )}
                   {noteHits.map(([wk, text]) => (
                     <button key={wk} onClick={() => goToWeek(wk)}
                       style={{
@@ -1149,6 +1168,13 @@ export default function BulletJournal() {
               </div>
             )}
           </div>
+        ) : isNotes ? (
+          <NotesView data={data} t={t} fonts={fonts}
+            onSetScratchpad={setScratchpad} goToWeek={goToWeek}
+            onOpenTask={(x) => {
+              goToWeek(x.week);
+              setExpandedQ((prev) => new Set(prev).add(x.id));
+            }} />
         ) : (
           <>
             {/* header + undo/redo + inline add-task */}

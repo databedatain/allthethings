@@ -69,6 +69,7 @@ export function defaultData() {
     sortMode: "custom",
     sortOrder: "oldest",
     barIntensity: "medium",
+    scratchpad: "",
     nextId: 1,
     theme: { ...THEME_DEFAULTS },
     palette: "default",

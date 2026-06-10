@@ -8,7 +8,9 @@ export default function TopBar({ t, fonts, query, setQuery, searching, selectedW
   const [histOpen, setHistOpen] = useState(false);
   const isEverything = selectedWeek === "everything" && !searching;
   const isCurrent = selectedWeek === cur && !searching;
-  const isPast = !searching && selectedWeek !== cur && selectedWeek !== "everything";
+  const isNotes = selectedWeek === "notes" && !searching;
+  const isPast = !searching && selectedWeek !== cur &&
+    selectedWeek !== "everything" && selectedWeek !== "notes";
 
   const navBtn = (active) => ({
     background: active ? t.accentSoft : "transparent",
@@ -42,6 +44,9 @@ export default function TopBar({ t, fonts, query, setQuery, searching, selectedW
         </button>
         <button style={navBtn(isEverything)} onClick={() => goToWeek("everything")}>
           ★ everything
+        </button>
+        <button style={navBtn(isNotes)} onClick={() => goToWeek("notes")}>
+          ✎ notes
         </button>
 
         {/* week history — jump to any past week */}
