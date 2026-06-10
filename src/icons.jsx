@@ -118,3 +118,21 @@ export const IconInbox = ({ size = 16 }) => (
     <path d="M8 2v5M5.8 5L8 7.2 10.2 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
+export const IconTag = ({ size = 16, filled, dashed }) => {
+  const outer = "M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z";
+  if (filled) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24">
+        <path fillRule="evenodd" fill="currentColor"
+          d={outer + " M7.5 6.1a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8z"}/>
+      </svg>
+    );
+  }
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d={outer} stroke="currentColor" strokeWidth="2" strokeLinejoin="round"
+        strokeDasharray={dashed ? "2.6 2.6" : undefined}/>
+      <circle cx="7.5" cy="7.5" r="1" fill="currentColor"/>
+    </svg>
+  );
+};

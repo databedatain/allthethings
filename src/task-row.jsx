@@ -1,6 +1,6 @@
 import { useState } from "react";
 import ColorPicker from "./color-picker.jsx";
-import { IconCheck, IconPause, IconPlus, IconTrash, IconUndo, IconQuestion, IconStar, IconGrip, IconNote, IconPeople, IconArrowUp, IconTarget } from "./icons.jsx";
+import { IconCheck, IconPause, IconPlus, IconTrash, IconUndo, IconQuestion, IconStar, IconGrip, IconNote, IconPeople, IconArrowUp, IconTarget, IconTag } from "./icons.jsx";
 import { rgba, rowFill, getIntensity, resolveColor, colorToken } from "./theme.js";
 import { TYPE, CONTROL } from "./tokens.js";
 
@@ -91,9 +91,27 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
             color: t.accent, flexShrink: 0, padding: 0,
           }} />
 
-        {/* meeting marker */}
+        {/* tag — solid in the tag's colour, faint dotted outline when bare */}
+        <ColorPicker
+          value={taskColor} t={t} colors={colors} allowNone
+          tags={resolvedTags} onCreateTag={onCreateTag}
+          onChange={(c) => onSetColor(task.id, c)}
+          renderTrigger={(toggle) => (
+            <button onClick={toggle}
+              title={tagOnTask ? `Tag: ${tagOnTask.name}` : task.color ? "Tag colour" : "Add tag"}
+              style={{ ...iconBtn, flexShrink: 0,
+                color: task.color ? taskColor : t.textFaint }}>
+              <IconTag size={ui.icon} filled={!!task.color} dashed={!task.color} />
+            </button>
+          )}
+        />
+
+        {/* meeting marker — same box as the tag icon */}
         {isMeeting && (
-          <span title="Meeting" style={{ color: t.question, display: "flex", flexShrink: 0, marginLeft: "2px" }}>
+          <span title="Meeting" style={{
+            color: t.question, display: "flex", alignItems: "center",
+            flexShrink: 0, padding: `${ui.btnPad}px`,
+          }}>
             <IconPeople size={ui.icon} />
           </span>
         )}
@@ -128,29 +146,6 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
             {isHold && <span style={{ fontSize: `${Math.round(ui.taskFont * 0.72)}px`, marginLeft: "8px", opacity: 0.7 }}>⏸ on hold</span>}
           </span>
         )}
-
-        {/* tag pill — merged colour-picker trigger and tag badge */}
-        <ColorPicker
-          value={taskColor} t={t} colors={colors} allowNone
-          tags={resolvedTags} onCreateTag={onCreateTag}
-          onChange={(c) => onSetColor(task.id, c)}
-          renderTrigger={(toggle) => {
-            const dot = Math.max(10, Math.round(ui.taskFont * 0.55));
-            return (
-              <button onClick={toggle}
-                title={tagOnTask ? `Tag: ${tagOnTask.name}` : task.color ? "Tag colour" : "Add tag"}
-                className={task.color ? undefined : "bj-row-action"}
-                style={{
-                  width: dot, height: dot, borderRadius: "50%", padding: 0,
-                  cursor: "pointer", flexShrink: 0,
-                  background: task.color ? taskColor : "transparent",
-                  border: task.color
-                    ? `1px solid ${rgba(taskColor, 0.7)}`
-                    : `1.5px dashed ${t.textFaint}`,
-                }} />
-            );
-          }}
-        />
 
         {/* sub-checklist progress */}
         {subs.length > 0 && (
@@ -366,6 +361,21 @@ export function AddTaskRow({ t, fonts, colors, tags, ui, intensity, draft, onCha
           <IconPlus size={ui.doneCheck} />
         </button>
 
+        {/* tag — mirrors the task rows so the columns line up */}
+        <ColorPicker
+          value={draftColor} t={t} colors={colors} allowNone
+          tags={resolvedTags} onCreateTag={onCreateTag}
+          onChange={(c) => onChange({ color: colorToken(c, colors) })}
+          renderTrigger={(toggle) => (
+            <button onClick={toggle}
+              title={tagOnDraft ? `Tag: ${tagOnDraft.name}` : draft.color ? "Tag colour" : "Add tag"}
+              style={{ ...iconBtn, flexShrink: 0,
+                color: draft.color ? draftColor : t.textFaint }}>
+              <IconTag size={ui.icon} filled={!!draft.color} dashed={!draft.color} />
+            </button>
+          )}
+        />
+
         {/* text input */}
         <input ref={inputRef} value={draft.text}
           onChange={(e) => onChange({ text: e.target.value })}
@@ -377,28 +387,6 @@ export function AddTaskRow({ t, fonts, colors, tags, ui, intensity, draft, onCha
             color: isHold ? t.holdText : t.text,
             fontStyle: isHold ? "italic" : "normal",
             marginLeft: "4px", padding: "2px 5px",
-          }}
-        />
-
-        {/* tag pill */}
-        <ColorPicker
-          value={draftColor} t={t} colors={colors} allowNone
-          tags={resolvedTags} onCreateTag={onCreateTag}
-          onChange={(c) => onChange({ color: colorToken(c, colors) })}
-          renderTrigger={(toggle) => {
-            const dot = Math.max(10, Math.round(ui.taskFont * 0.55));
-            return (
-              <button onClick={toggle}
-                title={tagOnDraft ? `Tag: ${tagOnDraft.name}` : draft.color ? "Tag colour" : "Add tag"}
-                style={{
-                  width: dot, height: dot, borderRadius: "50%", padding: 0,
-                  cursor: "pointer", flexShrink: 0,
-                  background: draft.color ? draftColor : "transparent",
-                  border: draft.color
-                    ? `1px solid ${rgba(draftColor, 0.7)}`
-                    : `1.5px dashed ${t.textFaint}`,
-                }} />
-            );
           }}
         />
 
