@@ -149,16 +149,23 @@ body {
   }
 }
 
-/* Compact rows: below this width the secondary actions leave the row and
- * reappear inside the detail panel (.bj-panel-actions). */
+/* Compact rows: the secondary actions leave the row and reappear inside
+ * the detail panel (.bj-panel-actions). Driven by the compact setting on the
+ * root: off = never, on = always, auto = below 520px. */
 .bj-panel-actions {
   display: none;
 }
+.bj-compact-on .bj-compact-hide {
+  display: none !important;
+}
+.bj-compact-on .bj-panel-actions {
+  display: flex;
+}
 @media (max-width: 520px) {
-  .bj-compact-hide {
+  .bj-compact-auto .bj-compact-hide {
     display: none !important;
   }
-  .bj-panel-actions {
+  .bj-compact-auto .bj-panel-actions {
     display: flex;
   }
 }

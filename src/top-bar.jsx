@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { weekParts } from "./weeks.js";
-import { IconGear, IconHistory, IconInbox } from "./icons.jsx";
+import { IconGear, IconHistory, IconInbox, IconTag } from "./icons.jsx";
 import { TYPE, CONTROL } from "./tokens.js";
 
 /* ─── top bar: search, navigation, week history popover, settings ─── */
-export default function TopBar({ t, fonts, query, setQuery, searching, selectedWeek, cur, weeksDesc, goToWeek, onOpenSettings, inboxCount, onCapture }) {
+export default function TopBar({ t, fonts, query, setQuery, searching, selectedWeek, cur, weeksDesc, goToWeek, onOpenSettings, inboxCount, onCapture, tagOptions, tagFilter, onTagFilter }) {
   const [histOpen, setHistOpen] = useState(false);
+  const [tagsOpen, setTagsOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [capture, setCapture] = useState("");
   const captureRef = useRef(null);
@@ -42,6 +43,71 @@ export default function TopBar({ t, fonts, query, setQuery, searching, selectedW
           outline: "none", color: t.text, boxSizing: "border-box",
         }}
       />
+      {/* tag filter — pick a tag as the search, no typing needed */}
+      {tagOptions?.length > 0 && (
+        <span style={{ position: "relative" }}>
+          <button onClick={() => setTagsOpen((o) => !o)}
+            title={tagFilter ? "Tag filter active" : "Filter by tag"}
+            style={{
+              width: CONTROL.h + 4, height: CONTROL.h + 4,
+              borderRadius: CONTROL.radius, cursor: "pointer",
+              border: `1px solid ${t.border}`, background: t.surface,
+              color: tagFilter
+                ? (tagOptions.find((tg) => tg.color === tagFilter)?.hex || t.accentText2)
+                : t.textMuted,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+            }}>
+            <IconTag size={15} filled={!!tagFilter} dashed={!tagFilter} />
+          </button>
+          {tagsOpen && (
+            <>
+              <div onClick={() => setTagsOpen(false)}
+                style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+              <div style={{
+                position: "absolute", top: `${CONTROL.h + 8}px`, left: 0, zIndex: 41,
+                width: "190px", maxHeight: "320px", overflowY: "auto",
+                background: t.popover, border: `1px solid ${t.border}`,
+                borderRadius: 6, padding: 4,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.28)",
+              }}>
+                {tagOptions.map((tg) => {
+                  const active = tagFilter === tg.color;
+                  return (
+                    <button key={tg.color}
+                      onClick={() => { onTagFilter(active ? null : tg.color); setTagsOpen(false); }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "8px",
+                        width: "100%", textAlign: "left", cursor: "pointer",
+                        border: "none", borderRadius: CONTROL.radiusSm,
+                        padding: "6px 8px", marginBottom: "1px",
+                        background: active ? t.accentSoft : "transparent",
+                        fontFamily: fonts.body, fontSize: TYPE.body,
+                        color: active ? t.accentText2 : t.textMuted,
+                        fontWeight: active ? 600 : 400,
+                      }}>
+                      <span style={{ width: 10, height: 10, borderRadius: "50%",
+                        background: tg.hex, flexShrink: 0 }} />
+                      <span style={{ flex: 1, overflow: "hidden",
+                        textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tg.name}</span>
+                      {active && <span>✕</span>}
+                    </button>
+                  );
+                })}
+                {tagFilter && (
+                  <button onClick={() => { onTagFilter(null); setTagsOpen(false); }}
+                    style={{
+                      width: "100%", textAlign: "center", cursor: "pointer",
+                      border: "none", background: "transparent", padding: "6px 8px",
+                      fontFamily: fonts.body, fontSize: TYPE.label, color: t.danger,
+                    }}>clear filter</button>
+                )}
+              </div>
+            </>
+          )}
+        </span>
+      )}
+
       <div className="bj-topbar-nav">
         <button style={navBtn(isCurrent)} onClick={() => goToWeek(cur)}>
           this week
