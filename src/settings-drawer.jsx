@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import ColorPicker from "./color-picker.jsx";
-import { IconSun, IconMoon, IconUndo, IconX } from "./icons.jsx";
+import { IconSun, IconMoon, IconUndo, IconX, IconPeople } from "./icons.jsx";
 import { PRESETS, PALETTES, ROW_INTENSITIES, getPalette, resolveColor } from "./theme.js";
 import { DENSITIES, MAX_TAGS } from "./weeks.js";
 import { FONTS } from "./font.js";
@@ -103,7 +103,7 @@ function FontSelect({ value, onChange, hasCustom, t }) {
 export default function SettingsDrawer({ t, fonts, data, fontName, paletteColors, confirmKey, onClose, actions }) {
   const {
     setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setTaskFont,
-    setHeadingFont, setBodyFont, addTag, removeTag, setTagName, setTagColor,
+    setHeadingFont, setBodyFont, addTag, removeTag, setTagName, setTagColor, setTagKind,
     onFontFile, resetFont, loadSamples, armOrRun,
     restoreFromTrash, deleteForever, emptyTrash, exportData, onImportFile,
   } = actions;
@@ -258,6 +258,17 @@ export default function SettingsDrawer({ t, fonts, data, fontName, paletteColors
                 <ColorPicker value={resolveColor(tag.color, paletteColors)} t={t} colors={paletteColors} size={16}
                   align="left"
                   onChange={(c) => c && c !== resolveColor(tag.color, paletteColors) && setTagColor(tag.color, c)} />
+                <button
+                  onClick={() => setTagKind(tag.color, tag.kind === "meeting" ? null : "meeting")}
+                  title={tag.kind === "meeting"
+                    ? "Meeting tag — applying it makes a task a meeting"
+                    : "Mark as the meeting tag"}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer", padding: 0,
+                    color: tag.kind === "meeting" ? t.question : t.textFaint, display: "flex",
+                  }}>
+                  <IconPeople size={14} />
+                </button>
                 <input
                   value={tag.name}
                   onChange={(e) => setTagName(tag.color, e.target.value)}

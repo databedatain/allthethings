@@ -11,16 +11,18 @@ const formatDate = (ts) => {
 };
 
 /* ─── task row ─── */
-export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intensity, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask, isExpanded, onToggleDetail, isFocused, onToggleFocus, isSpotlit }) {
+export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intensity, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask, onSetMeeting, isExpanded, onToggleDetail, isFocused, onToggleFocus, isSpotlit }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.text);
   const isHold = task.status === "hold";
   const isStar = !!task.starred;
-  const isMeeting = task.kind === "meeting";
+  // a task is a meeting when its tag is meeting-flavored
+  const isMeeting = tags?.find((tg) => tg.color === task.color)?.kind === "meeting";
   const subs = task.subtasks || [];
   const subsDone = subs.filter((s) => s.done).length;
   const hasDetail = !!(task.questionWho || task.questionText || task.note ||
     subs.length || isMeeting);
+
   const tagOnTask = tags?.find((tg) => tg.color === task.color && tg.name?.trim());
   // tokens resolve to a concrete hex against the active palette for display.
   // resolvedTags feeds the (hex-based) ColorPicker its tag shortcuts.
@@ -263,6 +265,7 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
       {/* collapsible detail panel */}
       {isExpanded && (
         <TaskDetailPanel task={task} t={t} fonts={fonts} ui={ui}
+          isMeeting={isMeeting} onSetMeeting={onSetMeeting}
           onPatch={onPatch} onAddSubtask={onAddSubtask}
           onPatchSubtask={onPatchSubtask} onRemoveSubtask={onRemoveSubtask}
           onPromoteSubtask={onPromoteSubtask} />
@@ -504,9 +507,8 @@ export function AddTaskRow({ t, fonts, colors, tags, ui, intensity, draft, onCha
 /* ─── per-task detail panel: note, sub-checklist, who/ask, meeting ───
  * A meeting is the same task wearing a different hat: attendees join the
  * note, and the sub-checklist relabels to action items. */
-export function TaskDetailPanel({ task, t, fonts, ui, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask }) {
+export function TaskDetailPanel({ task, t, fonts, ui, isMeeting, onSetMeeting, onPatch, onAddSubtask, onPatchSubtask, onRemoveSubtask, onPromoteSubtask }) {
   const [subDraft, setSubDraft] = useState("");
-  const isMeeting = task.kind === "meeting";
   const subs = task.subtasks || [];
   const subsDone = subs.filter((s) => s.done).length;
 
@@ -544,10 +546,8 @@ export function TaskDetailPanel({ task, t, fonts, ui, onPatch, onAddSubtask, onP
       {/* meeting toggle + attendees */}
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         <button
-          onClick={() => onPatch(task.id, isMeeting
-            ? { kind: undefined }
-            : { kind: "meeting", meeting: task.meeting || { attendees: "" } })}
-          title={isMeeting ? "Back to a plain task" : "Make this a meeting"}
+          onClick={() => onSetMeeting(task.id, !isMeeting)}
+          title={isMeeting ? "Back to a plain task (removes the meeting tag)" : "Make this a meeting (applies the meeting tag)"}
           style={{
             fontFamily: fonts.body, fontSize: `${ui.qLabel}px`,
             padding: "3px 10px", borderRadius: CONTROL.pill, cursor: "pointer",

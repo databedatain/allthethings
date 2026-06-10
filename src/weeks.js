@@ -64,7 +64,7 @@ export function getDensity(id) {
 
 export const MAX_TAGS = 20;
 
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
 
 export function defaultData() {
   return {
@@ -80,6 +80,7 @@ export function defaultData() {
     scratchpad: "",
     focus: { date: "", ids: [] },
     doneLog: {},
+    colorPresence: "full",
     nextId: 1,
     theme: { ...THEME_DEFAULTS },
     palette: "default",
@@ -244,6 +245,38 @@ export function migrate(data) {
       schemaVersion: 15,
       focus: d.focus || { date: "", ids: [] },
       doneLog: d.doneLog || {},
+    };
+  }
+
+  // v16: meeting-ness moves from the task (kind: "meeting") onto a tag
+  // (tag.kind: "meeting") — a task is a meeting when it wears a meeting tag.
+  // Existing meeting tasks get the meeting tag applied (created if absent).
+  // Also formalizes colorPresence.
+  if (d.schemaVersion < 16) {
+    let tags = d.tags || [];
+    let tasks = d.tasks || [];
+    if (tasks.some((x) => x.kind === "meeting") && !tags.some((tg) => tg.kind === "meeting")) {
+      const first = tasks.find((x) => x.kind === "meeting");
+      const owner = first.color && tags.find((tg) => tg.color === first.color);
+      if (owner) {
+        tags = tags.map((tg) => (tg === owner ? { ...tg, kind: "meeting" } : tg));
+      } else {
+        const used = new Set(tags.map((tg) => tg.color));
+        const color = first.color ||
+          Array.from({ length: 9 }, (_, i) => `slot:${i}`).find((tok) => !used.has(tok)) ||
+          "slot:0";
+        tags = [...tags, { color, name: "meeting", kind: "meeting" }];
+      }
+    }
+    const mcolor = tags.find((tg) => tg.kind === "meeting")?.color;
+    tasks = tasks.map((x) =>
+      x.kind === "meeting" ? { ...x, color: mcolor || x.color, kind: undefined } : x);
+    d = {
+      ...d,
+      schemaVersion: 16,
+      tags,
+      tasks,
+      colorPresence: d.colorPresence || "full",
     };
   }
 

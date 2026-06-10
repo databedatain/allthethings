@@ -450,6 +450,38 @@ export default function BulletJournal() {
         : x)),
     }));
 
+  // meeting-ness rides on the meeting tag: turning it on applies that tag
+  // (creating one on first use); turning it off just unTags the task
+  const setMeeting = (taskId, on) =>
+    update((d) => {
+      if (!on) {
+        return { ...d, tasks: d.tasks.map((x) => (x.id === taskId ? { ...x, color: null } : x)) };
+      }
+      let tags = d.tags || [];
+      let mtag = tags.find((tg) => tg.kind === "meeting");
+      if (!mtag) {
+        const used = new Set(tags.map((tg) => tg.color));
+        const pal = getPalette(d.palette).colors;
+        const color = pal.map((_, i) => `slot:${i}`).find((tok) => !used.has(tok)) || "slot:0";
+        mtag = { color, name: "meeting", kind: "meeting" };
+        tags = [...tags, mtag];
+      }
+      return {
+        ...d,
+        tags,
+        tasks: d.tasks.map((x) => (x.id === taskId
+          ? { ...x, color: mtag.color, meeting: x.meeting || { attendees: "" } }
+          : x)),
+      };
+    });
+
+  const setTagKind = (color, kind) =>
+    update((d) => ({
+      ...d,
+      tags: (d.tags || []).map((tg) =>
+        tg.color === color ? { ...tg, kind: kind || undefined } : tg),
+    }));
+
   // a meeting action item (or any sub-step) graduates into a real task in the
   // current week, inheriting the parent's colour — one update, one undo step
   const promoteSubtask = (taskId, subId) =>
@@ -715,7 +747,7 @@ export default function BulletJournal() {
           onClose={() => setSettingsOpen(false)}
           actions={{
             setThemeKey, applyPreset, selectPalette, setDensity, setBarIntensity, setTaskFont,
-            setHeadingFont, setBodyFont, addTag, removeTag, setTagName, setTagColor,
+            setHeadingFont, setBodyFont, addTag, removeTag, setTagName, setTagColor, setTagKind,
             onFontFile, resetFont, loadSamples, armOrRun,
             restoreFromTrash, deleteForever, emptyTrash, exportData, onImportFile,
           }} />
@@ -925,7 +957,7 @@ export default function BulletJournal() {
                       onToggleStar={toggleStar} onCreateTag={createTagInline}
                       onPatch={patchTask} onAddSubtask={addSubtask}
                       onPatchSubtask={patchSubtask} onRemoveSubtask={removeSubtask}
-                      onPromoteSubtask={promoteSubtask}
+                      onPromoteSubtask={promoteSubtask} onSetMeeting={setMeeting}
                       confirmKey={confirmKey}
                       isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
                       isFocused onToggleFocus={toggleFocus}
@@ -965,7 +997,7 @@ export default function BulletJournal() {
                   onToggleStar={toggleStar} onCreateTag={createTagInline}
                   onPatch={patchTask} onAddSubtask={addSubtask}
                   onPatchSubtask={patchSubtask} onRemoveSubtask={removeSubtask}
-                  onPromoteSubtask={promoteSubtask}
+                  onPromoteSubtask={promoteSubtask} onSetMeeting={setMeeting}
                   confirmKey={confirmKey}
                   isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
                   isFocused={focusSet.has(x.id)}
@@ -992,7 +1024,7 @@ export default function BulletJournal() {
                         onToggleStar={toggleStar} onCreateTag={createTagInline}
                         onPatch={patchTask} onAddSubtask={addSubtask}
                         onPatchSubtask={patchSubtask} onRemoveSubtask={removeSubtask}
-                        onPromoteSubtask={promoteSubtask}
+                        onPromoteSubtask={promoteSubtask} onSetMeeting={setMeeting}
                         confirmKey={confirmKey}
                         isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
                         isFocused={focusSet.has(x.id)}
