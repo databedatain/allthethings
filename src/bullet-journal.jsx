@@ -25,6 +25,7 @@ import {
 import { buildTheme, rgba, rowFill, resolveColor, colorToken, presetBg, PRESETS, PALETTES, getPalette } from "./theme.js";
 import { TYPE, SP, CONTROL } from "./tokens.js";
 import ColorPicker from "./color-picker.jsx";
+import { IconCheck, IconPause, IconPlus, IconTrash, IconUndo, IconQuestion, IconStar, IconGrip, IconSun, IconMoon } from "./icons.jsx";
 
 const STORAGE_KEY = "bullet-journal-data";
 // Pre-migration / pre-import safety net: the untouched previous snapshot.
@@ -35,75 +36,6 @@ const formatDate = (ts) => {
   const mo = d.toLocaleString("default", { month: "short" });
   return `${mo} ${d.getDate()}`;
 };
-
-/* ─── tiny icons ─── */
-const IconCheck = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
-    <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-const IconPause = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
-    <rect x="3" y="2" width="2.5" height="10" rx="1" fill="currentColor"/>
-    <rect x="8.5" y="2" width="2.5" height="10" rx="1" fill="currentColor"/>
-  </svg>
-);
-const IconPlus = ({ size = 19 }) => (
-  <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
-    <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-  </svg>
-);
-const IconTrash = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
-    <path d="M2.5 4h9M5 4V3a1 1 0 011-1h2a1 1 0 011 1v1M6 6.5v3M8 6.5v3M3.5 4l.5 7.5a1 1 0 001 1h4a1 1 0 001-1L10.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-const IconUndo = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
-    <path d="M3 5.5h5a3 3 0 010 6H6M3 5.5L5.5 3M3 5.5L5.5 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-const IconQuestion = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
-    <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3"/>
-    <path d="M5.5 5.5a1.5 1.5 0 012.9.5c0 1-1.4 1-1.4 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    <circle cx="7" cy="10" r="0.6" fill="currentColor"/>
-  </svg>
-);
-const IconStar = ({ filled, size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"}>
-    <path d="M12 2.5l2.7 5.9 6.4.6-4.8 4.3 1.4 6.3L12 16.9 6.3 19.6l1.4-6.3L2.9 9l6.4-.6z"
-      stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-const IconGrip = ({ size = 17 }) => (
-  <svg width={Math.round(size * 0.647)} height={size} viewBox="0 0 11 17" fill="currentColor">
-    <circle cx="3.5" cy="3" r="1.5"/><circle cx="7.5" cy="3" r="1.5"/>
-    <circle cx="3.5" cy="8.5" r="1.5"/><circle cx="7.5" cy="8.5" r="1.5"/>
-    <circle cx="3.5" cy="14" r="1.5"/><circle cx="7.5" cy="14" r="1.5"/>
-  </svg>
-);
-const IconSun = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2"/>
-    <g stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <line x1="12" y1="2.5" x2="12" y2="5"/>
-      <line x1="12" y1="19" x2="12" y2="21.5"/>
-      <line x1="2.5" y1="12" x2="5" y2="12"/>
-      <line x1="19" y1="12" x2="21.5" y2="12"/>
-      <line x1="4.7" y1="4.7" x2="6.4" y2="6.4"/>
-      <line x1="17.6" y1="17.6" x2="19.3" y2="19.3"/>
-      <line x1="4.7" y1="19.3" x2="6.4" y2="17.6"/>
-      <line x1="17.6" y1="6.4" x2="19.3" y2="4.7"/>
-    </g>
-  </svg>
-);
-const IconMoon = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path d="M20 14.5A8 8 0 119.5 4 6 6 0 0020 14.5z"
-      stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-  </svg>
-);
 
 /* ─── task row ─── */
 function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, confirmKey, onEdit, onSetColor, onStatusChange, onDelete, onToggleStar, onCreateTag, onUpdateQuestion, isQExpanded, onToggleQ }) {
