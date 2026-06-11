@@ -648,8 +648,17 @@ export default function BulletJournal() {
   const inView = isEverything
     ? data.tasks.filter((x) => x.week)
     : data.tasks.filter((x) => x.week === selectedWeek);
-  const activeTasks = inView.filter((x) => x.status === "active" && !focusSet.has(x.id)).sort(cmp);
-  const holdTasks = inView.filter((x) => x.status === "hold" && !focusSet.has(x.id)).sort(cmp);
+  const todayK = todayKey();
+  const dueSet = new Set(canAdd
+    ? inView.filter((x) =>
+        x.status !== "done" && x.due && x.due <= todayK && !focusSet.has(x.id))
+        .map((x) => x.id)
+    : []);
+  const dueTasks = inView
+    .filter((x) => dueSet.has(x.id))
+    .sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0));
+  const activeTasks = inView.filter((x) => x.status === "active" && !focusSet.has(x.id) && !dueSet.has(x.id)).sort(cmp);
+  const holdTasks = inView.filter((x) => x.status === "hold" && !focusSet.has(x.id) && !dueSet.has(x.id)).sort(cmp);
   const doneTasks = inView.filter((x) => x.status === "done" && !focusSet.has(x.id));
   const doneToday = (data.doneLog || {})[todayKey()] || 0;
 
@@ -996,6 +1005,35 @@ export default function BulletJournal() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* due — tasks whose date has arrived surface themselves */}
+            {canAdd && dueTasks.length > 0 && (
+              <div style={{ marginBottom: "16px" }}>
+                <div style={{
+                  fontFamily: fonts.heading, fontSize: TYPE.heading,
+                  color: t.danger, paddingBottom: SP.sm,
+                }}>
+                  ◷ due
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: `${ui.taskGap}px` }}>
+                  {dueTasks.map((x) => (
+                    <TaskRow key={x.id} task={x} t={t} fonts={fonts} colors={paletteColors} tags={data.tags} drag={drag}
+                      ui={ui} intensity={data.barIntensity || "medium"} wrapText={!!data.wrapText}
+                      isOver={false}
+                      onEdit={editTask} onSetColor={setTaskColor}
+                      onStatusChange={changeStatus} onDelete={armedDelete}
+                      onToggleStar={toggleStar} onCreateTag={createTagInline}
+                      onPatch={patchTask} onAddSubtask={addSubtask}
+                      onPatchSubtask={patchSubtask} onRemoveSubtask={removeSubtask}
+                      onPromoteSubtask={promoteSubtask} onSetMeeting={setMeeting}
+                      confirmKey={confirmKey}
+                      isExpanded={expandedQ.has(x.id)} onToggleDetail={toggleQ}
+                      isFocused={false} onToggleFocus={toggleFocus}
+                      isSpotlit={spotlightId === x.id}/>
+                  ))}
+                </div>
               </div>
             )}
 

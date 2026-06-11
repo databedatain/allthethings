@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { todayKey } from "./weeks.js";
 import ColorPicker from "./color-picker.jsx";
 import { IconCheck, IconPause, IconPlus, IconTrash, IconUndo, IconQuestion, IconStar, IconGrip, IconNote, IconPeople, IconArrowUp, IconTarget, IconTag } from "./icons.jsx";
 import { rgba, rowFill, getIntensity, resolveColor, colorToken } from "./theme.js";
@@ -18,6 +19,11 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
   const isStar = !!task.starred;
   // a task is a meeting when its tag is meeting-flavored
   const isMeeting = tags?.find((tg) => tg.color === task.color)?.kind === "meeting";
+  // due dates stay invisible until they matter: nothing until 2 days out,
+  // then a chip that warms toward danger as the date arrives and passes
+  const dueDays = task.due
+    ? Math.round((new Date(`${task.due}T00:00:00`) - new Date(`${todayKey()}T00:00:00`)) / 864e5)
+    : null;
   const subs = task.subtasks || [];
   const subsDone = subs.filter((s) => s.done).length;
   const hasDetail = !!(task.questionWho || task.questionText || task.note ||
@@ -152,11 +158,29 @@ export function TaskRow({ task, t, fonts, colors, tags, drag, isOver, ui, intens
             }}>↻{task.rolled}w</span>
         )}
 
-        {/* date — present on hover, out of the way otherwise */}
-        <span className="bj-row-action bj-compact-hide" style={{
-          fontFamily: fonts.body, fontSize: `${ui.date}px`,
-          color: t.textMuted, flexShrink: 0, whiteSpace: "nowrap", marginRight: "4px",
-        }}>{formatDate(task.created)}</span>
+        {/* date slot: a near/past due date owns it loudly; otherwise the
+            created (or far-future due) date stays hover-only */}
+        {dueDays != null && dueDays <= 2 ? (
+          <span title={`due ${task.due}`} style={{
+            fontFamily: fonts.body, fontSize: `${Math.max(10, ui.date - 2)}px`,
+            fontWeight: 600,
+            color: dueDays < 0 ? t.danger : dueDays === 0 ? t.accentText2 : t.star,
+            border: "1px solid currentColor", borderRadius: CONTROL.pill,
+            padding: "0 6px", flexShrink: 0, whiteSpace: "nowrap", marginRight: "4px",
+          }}>
+            {dueDays < 0 ? `${-dueDays}d over` : dueDays === 0 ? "due today"
+              : `due ${new Date(`${task.due}T00:00:00`).toLocaleDateString("default", { weekday: "short" })}`}
+          </span>
+        ) : (
+          <span className="bj-row-action bj-compact-hide" style={{
+            fontFamily: fonts.body, fontSize: `${ui.date}px`,
+            color: t.textMuted, flexShrink: 0, whiteSpace: "nowrap", marginRight: "4px",
+          }}>
+            {dueDays != null
+              ? `due ${formatDate(new Date(`${task.due}T00:00:00`).getTime())}`
+              : formatDate(task.created)}
+          </span>
+        )}
 
         {/* detail toggle — the count pill stands in for the note glyph when
             action items exist; either way it opens the panel */}
@@ -674,9 +698,12 @@ export function TaskDetailPanel({ task, t, fonts, ui, isMeeting, onSetMeeting, o
         </div>
       )}
 
-      {/* compact widths fold the row's secondary actions down here */}
-      {rowActions && (
-        <div className="bj-panel-actions" style={{ ...section, flexDirection: "row", flexWrap: "wrap", gap: "6px" }}>
+      {/* footer: folded row actions on the left (compact widths only),
+          due date pinned to the far right */}
+      <div style={{ ...section, flexDirection: "row", alignItems: "center",
+        flexWrap: "wrap", gap: "6px" }}>
+        {rowActions && (
+        <div className="bj-panel-actions" style={{ flexWrap: "wrap", gap: "6px" }}>
           {rowActions.onToggleFocus && (
             <button style={pill(rowActions.isFocused)}
               onClick={() => rowActions.onToggleFocus(task.id)}>
@@ -698,7 +725,31 @@ export function TaskDetailPanel({ task, t, fonts, ui, isMeeting, onSetMeeting, o
             <IconTrash size={ui.qLabel} /> {rowActions.confirmKey === `del:${task.id}` ? "sure?" : "trash"}
           </button>
         </div>
-      )}
+        )}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "6px" }}>
+          <label style={{ fontFamily: fonts.body, fontSize: `${ui.qLabel}px`,
+            color: t.question, flexShrink: 0 }}>due</label>
+          <input
+            type="date"
+            value={task.due || ""}
+            onChange={(e) => onPatch(task.id, { due: e.target.value || undefined })}
+            style={{
+              padding: "3px 6px", borderRadius: "4px",
+              border: `1px solid ${t.border}`, background: t.surface,
+              fontFamily: fonts.body, fontSize: `${ui.qLabel}px`,
+              color: t.text, outline: "none",
+              colorScheme: t.dark ? "dark" : "light",
+            }}
+          />
+          {task.due && (
+            <button onClick={() => onPatch(task.id, { due: undefined })} title="Clear due date"
+              style={{ ...ghostBtn, color: t.textFaint, fontFamily: fonts.body,
+                fontSize: `${ui.qLabel}px` }}>
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* questions: who / ask */}
       {showQ && (
