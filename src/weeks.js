@@ -64,7 +64,7 @@ export function getDensity(id) {
 
 export const MAX_TAGS = 20;
 
-export const SCHEMA_VERSION = 16;
+export const SCHEMA_VERSION = 17;
 
 export function defaultData() {
   return {
@@ -80,6 +80,7 @@ export function defaultData() {
     scratchpad: "",
     focus: { date: "", ids: [] },
     doneLog: {},
+    clock: { running: null, sessions: [] },
     colorPresence: "full",
     wrapText: false,
     compactRows: "auto",
@@ -279,6 +280,17 @@ export function migrate(data) {
       tags,
       tasks,
       colorPresence: d.colorPresence || "full",
+    };
+  }
+
+  // v17: the timeclock. `running` is the open session (no end yet); finished
+  // ones land in `sessions`. Both are independent of tasks — a session may
+  // point at one via taskId, but doesn't have to.
+  if (d.schemaVersion < 17) {
+    d = {
+      ...d,
+      schemaVersion: 17,
+      clock: d.clock || { running: null, sessions: [] },
     };
   }
 

@@ -1,0 +1,59 @@
+name: Build Apps Script bundle
+
+# apps-script/Index.html is generated, but it is committed on purpose: setting
+# the web app up should be copy-paste from GitHub, with no toolchain on the
+# machine doing the deploy. This keeps it in step with src/.
+on:
+  push:
+    paths:
+      - "src/**"
+      - "index.html"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.apps-script.config.js"
+      - "scripts/build-apps-script.mjs"
+      - ".github/workflows/apps-script.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apps-script-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+
+      # Build the browser bundle first: same sources, so a compile error shows
+      # up here rather than halfway through the single-file build.
+      - name: Build the browser bundle
+        run: npm run build
+
+      - name: Build apps-script/Index.html
+        run: npm run build:apps-script
+
+      # Downloadable even if the commit-back step can't push.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apps-script-Index.html
+          path: apps-script/Index.html
+
+      - name: Commit the rebuilt bundle
+        run: |
+          if git diff --quiet -- apps-script/Index.html; then
+            echo "Index.html already matches src/ — nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps-script/Index.html
+          git commit -m "Rebuild apps-script/Index.html"
+          git push origin HEAD:"${GITHUB_REF_NAME}"

@@ -26,6 +26,7 @@ import { TaskRow, DoneRow, AddTaskRow } from "./task-row.jsx";
 import TopBar from "./top-bar.jsx";
 import SettingsDrawer from "./settings-drawer.jsx";
 import NotesView from "./notes-view.jsx";
+import TimeclockView from "./timeclock-view.jsx";
 
 const STORAGE_KEY = "bullet-journal-data";
 // Pre-migration / pre-import safety net: the untouched previous snapshot.
@@ -336,6 +337,79 @@ export default function BulletJournal() {
 
   const setScratchpad = (text) => update((d) => ({ ...d, scratchpad: text }));
 
+  /* ─── timeclock ─── */
+
+  const emptyClock = { running: null, sessions: [] };
+
+  // Clocking in while already running closes the open session first, so the
+  // clock can only ever be on one thing — you never end up double-billed.
+  const clockIn = (label, taskId) => update((d) => {
+    const at = Date.now();
+    const clock = d.clock || emptyClock;
+    return {
+      ...d,
+      clock: {
+        running: { id: d.nextId, start: at, label: label || "", taskId: taskId ?? null },
+        sessions: clock.running
+          ? [...clock.sessions, { ...clock.running, end: at }]
+          : clock.sessions,
+      },
+      nextId: d.nextId + 1,
+    };
+  });
+
+  const clockOut = () => update((d) => {
+    const clock = d.clock || emptyClock;
+    if (!clock.running) return d;
+    return {
+      ...d,
+      clock: {
+        running: null,
+        sessions: [...clock.sessions, { ...clock.running, end: Date.now() }],
+      },
+    };
+  });
+
+  // One editor serves both the open session and finished ones.
+  const editSession = (id, patch) => update((d) => {
+    const clock = d.clock || emptyClock;
+    if (clock.running && clock.running.id === id) {
+      return { ...d, clock: { ...clock, running: { ...clock.running, ...patch } } };
+    }
+    return {
+      ...d,
+      clock: {
+        ...clock,
+        sessions: clock.sessions.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+      },
+    };
+  });
+
+  const deleteSession = (id) => update((d) => {
+    const clock = d.clock || emptyClock;
+    if (clock.running && clock.running.id === id) {
+      return { ...d, clock: { ...clock, running: null } };
+    }
+    return { ...d, clock: { ...clock, sessions: clock.sessions.filter((s) => s.id !== id) } };
+  });
+
+  // Time you forgot to clock. Seeded as the last hour and handed back so the
+  // view can open it for editing straight away.
+  const addSession = () => {
+    const id = data.nextId;
+    const end = Date.now();
+    update((d) => ({
+      ...d,
+      clock: {
+        ...(d.clock || emptyClock),
+        sessions: [...(d.clock || emptyClock).sessions,
+          { id, start: end - 60 * 60 * 1000, end, label: "", taskId: null }],
+      },
+      nextId: d.nextId + 1,
+    }));
+    return id;
+  };
+
   const setSortMode = (mode) => update((d) => ({ ...d, sortMode: mode }));
   // click the date control: switch to date sort, or flip direction if already on it
   const clickDateSort = () =>
@@ -608,8 +682,9 @@ export default function BulletJournal() {
   const cur = currentWeekKey();
   const isEverything = selectedWeek === "everything";
   const isNotes = selectedWeek === "notes";
+  const isClock = selectedWeek === "timeclock";
   const isCurrent = selectedWeek === cur;
-  const isPast = !isCurrent && !isEverything && !isNotes;
+  const isPast = !isCurrent && !isEverything && !isNotes && !isClock;
   const canAdd = isCurrent || isEverything;
   const searching = query.trim().length > 0 || !!tagFilter;
 
@@ -767,6 +842,7 @@ export default function BulletJournal() {
         searching={searching} selectedWeek={selectedWeek} cur={cur}
         weeksDesc={weeksDesc} goToWeek={goToWeek}
         inboxCount={inboxTasks.length} onCapture={addToInbox}
+        clockRunning={(data.clock || {}).running || null}
         tagOptions={namedTags.map((tg) => ({ ...tg, hex: resolveColor(tg.color, paletteColors) }))}
         tagFilter={tagFilter} onTagFilter={setTagFilter}
         onOpenSettings={() => setSettingsOpen(true)} />
@@ -913,6 +989,15 @@ export default function BulletJournal() {
         ) : isNotes ? (
           <NotesView data={data} t={t} fonts={fonts}
             onSetScratchpad={setScratchpad} goToWeek={goToWeek}
+            onOpenTask={(x) => {
+              goToWeek(x.week || cur);
+              setExpandedQ((prev) => new Set(prev).add(x.id));
+            }} />
+        ) : isClock ? (
+          <TimeclockView data={data} t={t} fonts={fonts}
+            onClockIn={clockIn} onClockOut={clockOut}
+            onEditSession={editSession} onDeleteSession={deleteSession}
+            onAddSession={addSession}
             onOpenTask={(x) => {
               goToWeek(x.week || cur);
               setExpandedQ((prev) => new Set(prev).add(x.id));

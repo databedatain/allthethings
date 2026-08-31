@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { weekParts } from "./weeks.js";
 import { IconGear, IconHistory, IconInbox, IconTag } from "./icons.jsx";
+import { formatStopwatch } from "./clock.js";
 import { TYPE, CONTROL } from "./tokens.js";
 
 /* ─── top bar: search, navigation, week history popover, settings ─── */
-export default function TopBar({ t, fonts, query, setQuery, searching, selectedWeek, cur, weeksDesc, goToWeek, onOpenSettings, inboxCount, onCapture, tagOptions, tagFilter, onTagFilter }) {
+export default function TopBar({ t, fonts, query, setQuery, searching, selectedWeek, cur, weeksDesc, goToWeek, onOpenSettings, inboxCount, onCapture, tagOptions, tagFilter, onTagFilter, clockRunning }) {
   const [histOpen, setHistOpen] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
@@ -14,8 +15,22 @@ export default function TopBar({ t, fonts, query, setQuery, searching, selectedW
   const isEverything = selectedWeek === "everything" && !searching;
   const isCurrent = selectedWeek === cur && !searching;
   const isNotes = selectedWeek === "notes" && !searching;
+  const isClock = selectedWeek === "timeclock" && !searching;
   const isPast = !searching && selectedWeek !== cur &&
-    selectedWeek !== "everything" && selectedWeek !== "notes";
+    selectedWeek !== "everything" && selectedWeek !== "notes" &&
+    selectedWeek !== "timeclock";
+
+  // A running clock shows its elapsed time in the nav from every view — an
+  // hour you forgot you were counting is worse than no clock at all.
+  const [elapsed, setElapsed] = useState(0);
+  const runningSince = clockRunning ? clockRunning.start : null;
+  useEffect(() => {
+    if (runningSince == null) return undefined;
+    const tick = () => setElapsed(Date.now() - runningSince);
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [runningSince]);
 
   const navBtn = (active) => ({
     background: active ? t.accentSoft : "transparent",
@@ -117,6 +132,17 @@ export default function TopBar({ t, fonts, query, setQuery, searching, selectedW
         </button>
         <button style={navBtn(isNotes)} onClick={() => goToWeek("notes")}>
           ✎ notes
+        </button>
+        <button
+          style={{
+            ...navBtn(isClock || !!runningSince),
+            ...(runningSince && !isClock
+              ? { color: t.accentText2, fontVariantNumeric: "tabular-nums" }
+              : null),
+          }}
+          onClick={() => goToWeek("timeclock")}
+          title={runningSince ? "On the clock — open the timeclock" : "Timeclock"}>
+          ⏱ {runningSince ? formatStopwatch(elapsed) : "time"}
         </button>
 
         {/* quick capture — zero decisions, lands in the inbox to sort later */}
