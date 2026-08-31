@@ -17,6 +17,11 @@ const out = resolve(root, "apps-script/Index.html");
 const forScriptTag = (js) =>
   js.replaceAll("</script", "<\\/script").replaceAll("<!--", "<\\!--");
 
+// A string replacement would read `$&`, `$\'` and friends inside the bundle as
+// substitution patterns and splice the tag it just removed back in. A replacer
+// function is taken literally.
+const replaceOnce = (html, tag, replacement) => html.replace(tag, () => replacement);
+
 async function inline(html) {
   const scripts = [...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"[^>]*><\/script>/g)];
   const styles = [...html.matchAll(/<link\b[^>]*\brel="stylesheet"[^>]*\bhref="([^"]+)"[^>]*>/g)];
@@ -25,12 +30,12 @@ async function inline(html) {
   for (const [tag, href] of styles) {
     if (/^https?:/i.test(href)) continue; // Google Fonts and friends stay remote
     const css = await readFile(resolve(dist, href.replace(/^\.?\//, "")), "utf8");
-    result = result.replace(tag, `<style>\n${css}\n</style>`);
+    result = replaceOnce(result, tag, `<style>\n${css}\n</style>`);
   }
   for (const [tag, src] of scripts) {
     if (/^https?:/i.test(src)) continue;
     const js = await readFile(resolve(dist, src.replace(/^\.?\//, "")), "utf8");
-    result = result.replace(tag, `<script type="module">\n${forScriptTag(js)}\n</script>`);
+    result = replaceOnce(result, tag, `<script type="module">\n${forScriptTag(js)}\n</script>`);
   }
   return result;
 }
@@ -38,8 +43,11 @@ async function inline(html) {
 const built = await readFile(resolve(dist, "index.html"), "utf8");
 let html = await inline(built);
 
-if (/\bsrc="\.?\/?assets\//.test(html) || /\bhref="\.?\/?assets\//.test(html)) {
-  throw new Error("Index.html still references a local asset — nothing would load it.");
+const dangling = /[^\n]*\b(?:src|href)="\.?\/?assets\/[^\n]*/.exec(html);
+if (dangling) {
+  throw new Error(
+    `Index.html still references a local asset — nothing would load it:\n  ${dangling[0].trim()}`,
+  );
 }
 
 html = html.replace(
